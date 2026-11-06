@@ -92,8 +92,8 @@ int main(int argc, char** argv)
     RS_DEBUG->setLevel(RS_Debug::D_WARNING);
 
     LC_Application app(argc, argv);
-    QCoreApplication::setOrganizationName("LibreCAD");
-    QCoreApplication::setApplicationName("LibreCAD");
+    QCoreApplication::setOrganizationName("EDWIN CNC");
+    QCoreApplication::setApplicationName("EDWIN CNC CAD-CAM");
     QCoreApplication::setApplicationVersion(XSTR(LC_VERSION));
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 7, 0))
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
         splash->setAttribute(Qt::WA_DeleteOnClose);
         splash->show();
         splash->showMessage(QObject::tr("Loading.."),
-                            Qt::AlignRight|Qt::AlignBottom, Qt::black);
+                            Qt::AlignRight|Qt::AlignBottom, Qt::white);
         app.processEvents();
         RS_DEBUG->print("main: splashscreen: OK");
     }
@@ -275,8 +275,8 @@ int main(int argc, char** argv)
     RS_DEBUG->print("main: loading translation..");
 
     settings.beginGroup("Appearance");
-    QString lang = settings.value("Language", "en").toString();
-    QString langCmd = settings.value("LanguageCmd", "en").toString();
+    QString lang = settings.value("Language", "es").toString();
+    QString langCmd = settings.value("LanguageCmd", "es").toString();
     settings.endGroup();
 
     RS_SYSTEM->loadTranslation(lang, langCmd);
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
     app.installEventFilter(&appWin);
 #endif
     RS_DEBUG->print("main: setting caption");
-    appWin.setWindowTitle(app.applicationName());
+    appWin.setWindowTitle("EDWIN CNC CAD/CAM");
 
     RS_DEBUG->print("main: show main window");
 
@@ -325,7 +325,7 @@ int main(int argc, char** argv)
         RS_DEBUG->print("main: updating splash");
         splash->raise();
         splash->showMessage(QObject::tr("Loading..."),
-                Qt::AlignRight|Qt::AlignBottom, Qt::black);
+                Qt::AlignRight|Qt::AlignBottom, Qt::white);
         RS_DEBUG->print("main: processing events");
         qApp->processEvents();
         RS_DEBUG->print("main: updating splash: OK");
@@ -362,7 +362,7 @@ int main(int argc, char** argv)
         {
             splash->showMessage(QObject::tr("Loading File %1..")
                     .arg(QDir::toNativeSeparators(*it)),
-            Qt::AlignRight|Qt::AlignBottom, Qt::black);
+            Qt::AlignRight|Qt::AlignBottom, Qt::white);
             qApp->processEvents();
         }
         appWin.slotFileOpen(*it);

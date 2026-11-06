@@ -32,7 +32,7 @@ jobs:
           arch: 'win64_msvc2019_64'
           dir: '..'
           install-deps: 'true'
-          cache: 'true'
+          cache: 'false'
           setup-python: 'true'
           set-env: 'true'
           aqtversion: '==3.1.*'

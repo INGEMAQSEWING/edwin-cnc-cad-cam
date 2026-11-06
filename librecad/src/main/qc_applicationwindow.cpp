@@ -3624,7 +3624,7 @@ void QC_ApplicationWindow::showAboutWindow()
     auto layout = new QVBoxLayout;
     dlg.setLayout(layout);
 
-    auto frame = new QGroupBox(qApp->applicationName());
+    auto frame = new QGroupBox("EDWIN CNC CAD/CAM");
     layout->addWidget(frame);
 
     auto f_layout = new QVBoxLayout;
@@ -3635,7 +3635,8 @@ void QC_ApplicationWindow::showAboutWindow()
 
     QString info
     (
-        tr("Version: %1").arg(XSTR(LC_VERSION)) + "\n" +
+        QString("EDWIN CNC CAD/CAM 1.0") + "\n" +
+        QString("Basado en LibreCAD %1 (software libre GPLv2)").arg(XSTR(LC_VERSION)) + "\n" +
         #if defined(Q_CC_CLANG)
             tr("Compiler: Clang %1.%2.%3").arg(__clang_major__).arg(__clang_minor__).arg(__clang_patchlevel__) + "\n" +
         #elif defined(Q_CC_GNU)
@@ -3662,7 +3663,9 @@ void QC_ApplicationWindow::showAboutWindow()
                                                "<br/>"
                                                "<a href=\"https://github.com/LibreCAD/LibreCAD/blob/master/LICENSE\">%2</a>"
                                                "<br/>"
-                                               "<a href=\"https://github.com/LibreCAD/LibreCAD/\">%3</a>")
+                                               "<a href=\"https://github.com/LibreCAD/LibreCAD/\">%3</a>"
+                                               "<br/>"
+                                               "<a href=\"https://github.com/INGEMAQSEWING/edwin-cnc-cad-cam\">Codigo fuente de EDWIN CNC CAD/CAM</a>")
                                       .arg( tr("Contributors"))
                                       .arg( tr("License"))
                                       .arg( tr("The Code")) );

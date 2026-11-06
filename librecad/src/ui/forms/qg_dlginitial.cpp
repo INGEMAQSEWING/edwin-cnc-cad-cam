@@ -57,7 +57,7 @@ void QG_DlgInitial::languageChange()
 void QG_DlgInitial::init() {
     // Fill combobox with languages:
     QStringList languageList = RS_SYSTEM->getLanguageList();
-    QString defaultLanguage=RS_SYSTEM->symbolToLanguage(QString("en"));
+    QString defaultLanguage=RS_SYSTEM->symbolToLanguage(QString("es"));
     for (QStringList::Iterator it = languageList.begin();
         it!=languageList.end();
         it++) {
