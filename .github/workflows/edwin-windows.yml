@@ -1,0 +1,75 @@
+# EDWIN CNC CAD/CAM: instalador de Windows 64 bits (basado en LibreCAD 2.2.1, Qt 5.15).
+name: Compilar EDWIN CNC CAD-CAM (Windows)
+on:
+  push:
+    branches: [edwin]
+  workflow_dispatch:
+
+concurrency:
+  group: edwin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  Windows64:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSVC developer environment (64-bit)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Qt-5.15 (MSVC 2019 64-bit)
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '5.15.*'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          dir: '..'
+          install-deps: 'true'
+          cache: 'true'
+          setup-python: 'true'
+          set-env: 'true'
+          aqtversion: '==3.1.*'
+          py7zrversion: '==0.20.*'
+          extra: '--external 7z'
+
+      - name: Install boost
+        shell: bash
+        run: |
+          curl -# -L -o boost.7z https://archives.boost.io/release/1.87.0/source/boost_1_87_0.7z
+          7z x -o. -y boost.7z > /dev/null
+          mv boost_1_87_0 ../boost
+          rm boost.7z
+
+      - name: Configure for MSVC
+        shell: bash
+        run: |
+          ROOT=$(cygpath -w "$GITHUB_WORKSPACE")
+          QTDIR=$(cygpath -w "$GITHUB_WORKSPACE/../Qt")
+          sed "s|^CUSTOM_ROOT = .*|CUSTOM_ROOT = $ROOT|" CI/custom-win.pri > custom.pri
+          sed "s|D:\\a\\LibreCAD\\Qt|$QTDIR|" CI/custom-win-x64.nsh > scripts/postprocess-windows/custom.nsh
+          cat custom.pri scripts/postprocess-windows/custom.nsh
+
+      - name: Build and package
+        shell: cmd
+        run: |
+          pushd "${{github.workspace}}\scripts"
+          build-windows.bat
+
+      - name: Rename installer
+        shell: bash
+        run: |
+          mv generated/*.exe "EDWIN-CNC-CAD-CAM-1.0.${{ github.run_number }}-Windows-x64.exe"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDWIN-CNC-CAD-CAM-1.0.${{ github.run_number }}
+          path: EDWIN-CNC-CAD-CAM-*.exe
+          retention-days: 30
