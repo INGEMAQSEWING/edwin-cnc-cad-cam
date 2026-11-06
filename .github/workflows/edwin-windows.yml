@@ -50,8 +50,8 @@ jobs:
       - name: Configure for MSVC
         shell: bash
         run: |
-          ROOT=$(cygpath -w "$GITHUB_WORKSPACE")
-          QTDIR=$(cygpath -w "$GITHUB_WORKSPACE/../Qt")
+          ROOT=$(cygpath -m "$GITHUB_WORKSPACE")
+          QTDIR=$(cygpath -m "$GITHUB_WORKSPACE/../Qt")
           sed "s|^CUSTOM_ROOT = .*|CUSTOM_ROOT = $ROOT|" CI/custom-win.pri > custom.pri
           sed "s|D:\\a\\LibreCAD\\Qt|$QTDIR|" CI/custom-win-x64.nsh > scripts/postprocess-windows/custom.nsh
           cat custom.pri scripts/postprocess-windows/custom.nsh
