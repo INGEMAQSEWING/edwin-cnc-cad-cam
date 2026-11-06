@@ -20,7 +20,8 @@ SUBDIRS     = \
         plotequation \
         pointstocsv \
         gear \
-        circletools
+        circletools \
+        edwincnc
 
 TRANSLATIONS = ./ts/plugins_ar.ts \
     ./ts/plugins_ca.ts \

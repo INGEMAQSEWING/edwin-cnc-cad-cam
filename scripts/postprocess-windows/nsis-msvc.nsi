@@ -76,7 +76,7 @@ VIAddVersionKey "LegalCopyright" "EDWIN CNC - basado en LibreCAD (GPLv2)"
 ;--------------------------------
 ; Interface
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN "$INSTDIR\LibreCAD.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\EDWIN-CNC.exe"
 
 ;--------------------------------
 ; Pages
@@ -196,13 +196,13 @@ Section "Main Section" SecMain
 
   SetShellVarContext all
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
-  CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\LibreCAD.exe"
+  CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\EDWIN-CNC.exe"
   CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\LibreCAD.exe"
+  CreateShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\EDWIN-CNC.exe"
 
   ; Add/Remove Programs entries - show architecture
   WriteRegStr HKLM "${UNINSTKEY}" "DisplayName" "${APPNAME} ${SCMREVISION} (${ARCH_SUFFIX})"
-  WriteRegStr HKLM "${UNINSTKEY}" "DisplayIcon" "$INSTDIR\LibreCAD.exe"
+  WriteRegStr HKLM "${UNINSTKEY}" "DisplayIcon" "$INSTDIR\EDWIN-CNC.exe"
   WriteRegStr HKLM "${UNINSTKEY}" "DisplayVersion" "${SCMREVISION}"
   WriteRegStr HKLM "${UNINSTKEY}" "Publisher" "EDWIN CNC"
   WriteRegStr HKLM "${UNINSTKEY}" "URLInfoAbout" "https://librecad.org"
@@ -239,19 +239,19 @@ Section "Associate .dxf and .dwg files" SecAssoc
   ${EndIf}
 
   ; --- ProgIDs (icon + open command) ---
-  ; Use the embedded icon in LibreCAD.exe (always present) rather than a
+  ; Use the embedded icon in EDWIN-CNC.exe (always present) rather than a
   ; separate .ico file that may not be deployed.
   WriteRegStr HKCR "EdwinCNC.DXF" "" "AutoCAD DXF Drawing"
   WriteRegStr HKCR "EdwinCNC.DXF" "FriendlyTypeName" "AutoCAD DXF Drawing"
-  WriteRegStr HKCR "EdwinCNC.DXF\DefaultIcon" "" "$INSTDIR\LibreCAD.exe,0"
+  WriteRegStr HKCR "EdwinCNC.DXF\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
   WriteRegStr HKCR "EdwinCNC.DXF\shell\open\FriendlyAppName" "" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "EdwinCNC.DXF\shell\open\command" "" '"$INSTDIR\LibreCAD.exe" "%1"'
+  WriteRegStr HKCR "EdwinCNC.DXF\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
 
   WriteRegStr HKCR "EdwinCNC.DWG" "" "AutoCAD DWG Drawing"
   WriteRegStr HKCR "EdwinCNC.DWG" "FriendlyTypeName" "AutoCAD DWG Drawing"
-  WriteRegStr HKCR "EdwinCNC.DWG\DefaultIcon" "" "$INSTDIR\LibreCAD.exe,0"
+  WriteRegStr HKCR "EdwinCNC.DWG\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
   WriteRegStr HKCR "EdwinCNC.DWG\shell\open\FriendlyAppName" "" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "EdwinCNC.DWG\shell\open\command" "" '"$INSTDIR\LibreCAD.exe" "%1"'
+  WriteRegStr HKCR "EdwinCNC.DWG\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
 
   ; --- Per-machine default association (works when no UserChoice exists) ---
   WriteRegStr HKCR ".dxf" "" "EdwinCNC.DXF"
@@ -267,17 +267,17 @@ Section "Associate .dxf and .dwg files" SecAssoc
   WriteRegStr HKCR ".dwg\OpenWithProgIds" "EdwinCNC.DWG" ""
 
   ; --- Applications key: lets Explorer's "Open with" describe the app. ---
-  WriteRegStr HKCR "Applications\LibreCAD.exe" "FriendlyAppName" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "Applications\LibreCAD.exe\DefaultIcon" "" "$INSTDIR\LibreCAD.exe,0"
-  WriteRegStr HKCR "Applications\LibreCAD.exe\shell\open\command" "" '"$INSTDIR\LibreCAD.exe" "%1"'
-  WriteRegStr HKCR "Applications\LibreCAD.exe\SupportedTypes" ".dxf" ""
-  WriteRegStr HKCR "Applications\LibreCAD.exe\SupportedTypes" ".dwg" ""
+  WriteRegStr HKCR "Applications\EDWIN-CNC.exe" "FriendlyAppName" "EDWIN CNC CAD/CAM"
+  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
+  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
+  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\SupportedTypes" ".dxf" ""
+  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\SupportedTypes" ".dwg" ""
 
   ; --- Capabilities + RegisteredApplications: makes LibreCAD selectable in
   ; Settings > Default Apps so users can pick it as their default. ---
   WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationName" "EDWIN CNC CAD/CAM"
   WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationDescription" "Free 2D CAD application"
-  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationIcon" "$INSTDIR\LibreCAD.exe,0"
+  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationIcon" "$INSTDIR\EDWIN-CNC.exe,0"
   WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dxf" "EdwinCNC.DXF"
   WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dwg" "EdwinCNC.DWG"
   WriteRegStr HKLM "Software\RegisteredApplications" "${APPNAME}" "Software\${APPNAME}\Capabilities"
@@ -330,7 +330,7 @@ Section "Uninstall"
   ; --- Remove our ProgIDs and Applications entry ---
   DeleteRegKey HKCR "EdwinCNC.DXF"
   DeleteRegKey HKCR "EdwinCNC.DWG"
-  DeleteRegKey HKCR "Applications\LibreCAD.exe"
+  DeleteRegKey HKCR "Applications\EDWIN-CNC.exe"
 
   ; --- Remove Default Apps registration ---
   DeleteRegValue HKLM "Software\RegisteredApplications" "${APPNAME}"

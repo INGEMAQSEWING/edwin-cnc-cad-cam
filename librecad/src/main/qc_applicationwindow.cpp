@@ -80,6 +80,10 @@
 #include "rs_eventhandler.h"
 #include "rs_painterqt.h"
 #include "rs_pen.h"
+#include "rs_graphic.h"
+#include "rs_layer.h"
+#include "rs_layerlist.h"
+#include "rs_color.h"
 #include "rs_settings.h"
 #include "rs_staticgraphicview.h"
 #include "rs_system.h"
@@ -2236,6 +2240,30 @@ QC_MDIWindow* QC_ApplicationWindow::slotFileNew(RS_Document* doc) {
 /**
  * Helper function for Menu file -> New & New....
  */
+// EDWIN CNC: todo dibujo nuevo (sin plantilla) trae las capas para corte por plasma.
+//   CORTE (rojo): lo que corta la antorcha. Queda como capa activa.
+//   MARCADO (verde): marcas sin perforar la lamina.
+//   REFERENCIA (gris, a trazos): lineas de construccion y la lamina; nunca se cortan.
+static void edwinCapasCorte(RS_Graphic* graphic) {
+    if (graphic == nullptr) return;
+    struct Capa { const char* nombre; int r, g, b; RS2::LineType tipo; };
+    const Capa capas[] = {
+        {"CORTE", 255, 0, 0, RS2::SolidLine},
+        {"MARCADO", 0, 200, 0, RS2::SolidLine},
+        {"REFERENCIA", 128, 128, 128, RS2::DashLine},
+    };
+    RS_LayerList* lista = graphic->getLayerList();
+    for (const Capa& c : capas) {
+        if (lista->find(c.nombre) != nullptr) continue;
+        auto capa = new RS_Layer(c.nombre);
+        capa->setPen(RS_Pen(RS_Color(c.r, c.g, c.b), RS2::Width00, c.tipo));
+        graphic->addLayer(capa);
+    }
+    RS_Layer* corte = lista->find("CORTE");
+    if (corte != nullptr) lista->activate(corte, true);
+    graphic->setModified(false);
+}
+
 bool QC_ApplicationWindow::slotFileNewHelper(QString fileName, QC_MDIWindow* w) {
     RS_DEBUG->print("QC_ApplicationWindow::slotFileNewHelper()");
     bool ret = false;
@@ -2254,6 +2282,9 @@ bool QC_ApplicationWindow::slotFileNewHelper(QString fileName, QC_MDIWindow* w) 
         QApplication::restoreOverrideCursor();
         return true; // closed by the user: not a template error
     }
+
+    if (fileName.isEmpty())
+        edwinCapasCorte(w->getGraphic());
 
     // link the layer widget to the new document:
     RS_LayerList *layerList = w->getDocument()->getLayerList();

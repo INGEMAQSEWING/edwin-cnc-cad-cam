@@ -23,8 +23,8 @@ if %errorlevel% equ 0 (
     mingw32-make.exe release -j4
 )
 
-if NOT exist windows\LibreCAD.exe (
-    echo "Building windows\LibreCAD.exe failed!"
+if NOT exist windows\EDWIN-CNC.exe (
+    echo "Building windows\EDWIN-CNC.exe failed!"
     popd
     exit /b 1
 )
@@ -38,7 +38,7 @@ for %%f in (librecad\ts\*.ts plugins\ts\*.ts) do (
 )
 rem lrelease.exe librecad\ts\*.ts -qm windows\ts\
 echo windepolyqt: Current directory is: %CD%
-windeployqt.exe --release windows\LibreCAD.exe librecad\ts --verbose 2 --force
+windeployqt.exe --release windows\EDWIN-CNC.exe librecad\ts --verbose 2 --force
 dir windows\translations
 copy windows\translations\* librecad\ts\
 dir librecad\ts\
@@ -126,14 +126,14 @@ rem The installer has to match the program it packages, and the machine that
 rem builds the program does not say what the program is: 64-bit Windows also
 rem builds the 32-bit LibreCAD. So ask the program that was built.
 set "LC_EXE_ARCH="
-for /f "usebackq delims=" %%a in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "..\exe-arch.ps1" "..\..\windows\LibreCAD.exe"`) do set "LC_EXE_ARCH=%%a"
-echo [INFO] windows\LibreCAD.exe is built for: %LC_EXE_ARCH%
+for /f "usebackq delims=" %%a in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "..\exe-arch.ps1" "..\..\windows\EDWIN-CNC.exe"`) do set "LC_EXE_ARCH=%%a"
+echo [INFO] windows\EDWIN-CNC.exe is built for: %LC_EXE_ARCH%
 
 set NSIS_FLAGS=/X"SetCompressor /FINAL lzma" /V4
 if /I "%LC_EXE_ARCH%"=="AMD64" (
     set NSIS_FLAGS=%NSIS_FLAGS% /DWIN64 /DAMD64
 ) else if /I not "%LC_EXE_ARCH%"=="x86" (
-    echo [ERROR] No installer can be built: windows\LibreCAD.exe has to be a program for x86 or AMD64, and exe-arch.ps1 reported "%LC_EXE_ARCH%".
+    echo [ERROR] No installer can be built: windows\EDWIN-CNC.exe has to be a program for x86 or AMD64, and exe-arch.ps1 reported "%LC_EXE_ARCH%".
     popd
     exit /b 1
 )
