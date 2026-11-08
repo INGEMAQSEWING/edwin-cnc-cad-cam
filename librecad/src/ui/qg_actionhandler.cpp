@@ -30,6 +30,14 @@
 #include <QDockWidget>
 
 #include "qg_actionhandler.h"
+#include "edwin_variante.h"
+
+#include <QApplication>
+#include <QKeyEvent>
+#include <QMenu>
+#include <QMenuBar>
+#include "rs_actionselectbase.h"
+#include "intern/qc_actiongetselect.h"
 
 #include "qc_applicationwindow.h"
 
@@ -242,8 +250,60 @@ RS_ActionInterface* QG_ActionHandler::getCurrentAction() {
  *
  * @return Pointer to the created action or nullptr.
  */
+namespace {
+// EDWIN CNC CAD2CAM: último comando (para repetirlo con Enter o espacio) y F3.
+RS2::ActionType edwinUltimaAccion = RS2::ActionNone;
+bool edwinUltimaFueCopia = false;
+bool edwinReferenciasApagadas = false;
+RS_SnapMode edwinReferenciasGuardadas;
+
+bool edwinEsSinSeleccion(RS2::ActionType id) {
+    switch (id) {
+    case RS2::ActionDrawHatchNoSelect:
+    case RS2::ActionModifyAttributesNoSelect:
+    case RS2::ActionModifyDeleteNoSelect:
+    case RS2::ActionModifyMoveNoSelect:
+    case RS2::ActionModifyRotateNoSelect:
+    case RS2::ActionModifyScaleNoSelect:
+    case RS2::ActionModifyMirrorNoSelect:
+    case RS2::ActionModifyMoveRotateNoSelect:
+    case RS2::ActionModifyRevertDirectionNoSelect:
+    case RS2::ActionModifyRotate2NoSelect:
+    case RS2::ActionModifyOffsetNoSelect:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool edwinBuscarYDisparar(const QList<QAction*>& acciones, const QString& texto) {
+    for (QAction* a : acciones) {
+        if (a == nullptr) continue;
+        if (a->menu() != nullptr) {
+            if (edwinBuscarYDisparar(a->menu()->actions(), texto)) return true;
+        } else if (a->text().remove('&').startsWith(texto, Qt::CaseInsensitive)) {
+            a->trigger();
+            return true;
+        }
+    }
+    return false;
+}
+} // namespace
+
 RS_ActionInterface* QG_ActionHandler::setCurrentAction(RS2::ActionType id) {
     RS_DEBUG->print("QG_ActionHandler::setCurrentAction()");
+    if (edwin::esCad2cam()) {
+        // Desplazar o Copiar sin ventana, como en AutoCAD.
+        if (id == RS2::ActionModifyMove) {
+            edwin::moverModo() = edwin::copiarPendiente() ? 1 : 0;
+            edwin::copiarPendiente() = false;
+        }
+        // Recordar el último comando de dibujo o de modificar (Enter o espacio lo repite).
+        if (id >= RS2::ActionDrawArc && id <= RS2::ActionModifyLineGap && !edwinEsSinSeleccion(id)) {
+            edwinUltimaAccion = id;
+            edwinUltimaFueCopia = (id == RS2::ActionModifyMove && edwin::moverModo() == 1);
+        }
+    }
     RS_ActionInterface* a = nullptr;
 //    view->killAllActions();
 
@@ -1273,6 +1333,10 @@ bool QG_ActionHandler::command(const QString& cmd)
 
     if (cmd.isEmpty())
     {
+        if (edwin::esCad2cam()) {
+            edwinEnterVacio();
+            return true;
+        }
         if (snap_toolbar != nullptr && RS_SETTINGS->readNumEntry("/Keyboard/ToggleFreeSnapOnSpace", false)) {
             RS_DEBUG->print("QG_ActionHandler::command: toggle Snap Free: begin");
             RS_SnapMode smFree = {};
@@ -1311,6 +1375,24 @@ bool QG_ActionHandler::command(const QString& cmd)
     //   it might be intended to launch a new command
     //    std::cout<<"QG_ActionHandler::command(): e.isAccepted()="<<e.isAccepted()<<std::endl;
     if (!e.isAccepted()) {
+
+        // EDWIN CNC CAD2CAM: comandos de AutoCAD en español (mayúsculas o minúsculas).
+        if (edwin::esCad2cam()) {
+            if (c == "co" || c == "cp" || c == "copia" || c == "copiar") {
+                edwinCopiar();
+                return true;
+            }
+            if (c == "ma" || c == "matriz")
+                return edwinLanzarHerramienta(QString::fromUtf8("Matriz"));
+            if (c == "ar" || c == "arandela")
+                return edwinLanzarHerramienta(QString::fromUtf8("Arandela"));
+            RS2::ActionType tipo = RS_COMMANDS->cmdToAction(c);
+            if (tipo != RS2::ActionNone) {
+                if (!commandLineActions(tipo))
+                    setCurrentAction(tipo);
+                return true;
+            }
+        }
 
         RS_DEBUG->print("QG_ActionHandler::command: convert cmd to action type");
         // command for new action:
@@ -1981,6 +2063,84 @@ void QG_ActionHandler::slotSnapMiddleManual()
     auto a = new LC_ActionSnapMiddleManual(*document, *view, currentAppPen);
     connect(a, &LC_ActionSnapMiddleManual::signalUnsetSnapMiddleManual, snap_toolbar, &QG_SnapToolBar::slotUnsetSnapMiddleManual);
     view->setCurrentAction(a);
+}
+
+// ---------------------------------------------------------------------------
+// EDWIN CNC CAD2CAM (estilo AutoCAD 2010)
+
+void QG_ActionHandler::edwinEnterVacio() {
+    if (view == nullptr) return;
+    RS_ActionInterface* a = view->getCurrentAction();
+    if (a == nullptr || a->rtti() == RS2::ActionDefault) {
+        // Sin comando activo: repetir el último, como en AutoCAD.
+        if (edwinUltimaAccion != RS2::ActionNone) {
+            if (edwinUltimaFueCopia) edwin::copiarPendiente() = true;
+            RS_DIALOGFACTORY->commandMessage(tr("Repetir el último comando"));
+            setCurrentAction(edwinUltimaAccion);
+        }
+        return;
+    }
+    if (dynamic_cast<RS_ActionSelect*>(a) != nullptr || dynamic_cast<RS_ActionSelectSingle*>(a) != nullptr ||
+        dynamic_cast<RS_ActionSelectBase*>(a) != nullptr || dynamic_cast<QC_ActionGetSelect*>(a) != nullptr) {
+        // Seleccionando objetos: Enter = terminar la selección y seguir con el comando.
+        edwin::enviandoTecla() = true;
+        QKeyEvent abajo(QEvent::KeyPress, Qt::Key_Enter, Qt::NoModifier);
+        QApplication::sendEvent(view, &abajo);
+        QKeyEvent arriba(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(view, &arriba);
+        edwin::enviandoTecla() = false;
+        return;
+    }
+    // Dibujando: Enter termina el comando, como en AutoCAD. Primero se cierra lo que se
+    // estaba dibujando (igual que el clic derecho) y, si el comando quedó esperando su primer
+    // punto, se sale del comando.
+    view->back();
+    RS_ActionInterface* sigue = view->getCurrentAction();
+    if (sigue == a && sigue->getStatus() <= 0)
+        view->back();
+}
+
+void QG_ActionHandler::edwinAlternarReferencias() {
+    RS_SnapMode s = getSnaps();
+    RS_SnapMode libre;
+    libre.restriction = s.restriction;
+    if (edwinReferenciasApagadas && s != libre)
+        edwinReferenciasApagadas = false;   // el usuario las volvió a prender en la barra
+    if (!edwinReferenciasApagadas) {
+        edwinReferenciasGuardadas = s;
+        slotSetSnaps(libre);
+        edwinReferenciasApagadas = true;
+        RS_DIALOGFACTORY->commandMessage(tr("<Referencia a objetos desactivada> (F3)"));
+    } else {
+        RS_SnapMode r = edwinReferenciasGuardadas;
+        r.restriction = s.restriction;
+        slotSetSnaps(r);
+        edwinReferenciasApagadas = false;
+        RS_DIALOGFACTORY->commandMessage(tr("<Referencia a objetos activada> (F3)"));
+    }
+}
+
+void QG_ActionHandler::edwinAlternarOrto() {
+    if (getSnapRestriction() == RS2::RestrictOrthogonal) {
+        slotRestrictNothing();
+        RS_DIALOGFACTORY->commandMessage(tr("<Orto desactivado> (F8)"));
+    } else {
+        slotRestrictOrthogonal();
+        RS_DIALOGFACTORY->commandMessage(tr("<Orto activado> (F8)"));
+    }
+}
+
+void QG_ActionHandler::edwinCopiar() {
+    edwin::copiarPendiente() = true;
+    setCurrentAction(RS2::ActionModifyMove);
+}
+
+bool QG_ActionHandler::edwinLanzarHerramienta(const QString& texto) {
+    auto& ventana = QC_ApplicationWindow::getAppWindow();
+    if (!ventana) return false;
+    if (edwinBuscarYDisparar(ventana->menuBar()->actions(), texto)) return true;
+    RS_DIALOGFACTORY->commandMessage(tr("No se encontró la herramienta %1").arg(texto));
+    return false;
 }
 
 void QG_ActionHandler::disableSnaps() {

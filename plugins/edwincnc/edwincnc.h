@@ -34,6 +34,8 @@ private:
     void laminaDeReferencia(Document_Interface *doc, QWidget *parent);
     void crearCapas(Document_Interface *doc, QWidget *parent, bool avisar);
     void borrarRevision(Document_Interface *doc);
+    void matriz(Document_Interface *doc, QWidget *parent);    // herramientas.cpp
+    void arandela(Document_Interface *doc, QWidget *parent);  // herramientas.cpp
 };
 
 #endif // EDWINCNC_H

@@ -60,6 +60,7 @@
 #include "rs_modification.h"
 #include "rs_painterqt.h"
 #include "rs_settings.h"
+#include "edwin_variante.h"
 
 #ifdef EMU_C99
 #include "emu_c99.h"
@@ -906,9 +907,25 @@ void QG_GraphicView::wheelEvent(QWheelEvent *e) {
 }
 
 
+    // CAD2CAM: Enter o espacio en el dibujo = Enter de AutoCAD (termina o repite el comando).
+    static bool edwinEsTeclaEnter(QKeyEvent* e)
+    {
+        if (!edwin::esCad2cam() || edwin::enviandoTecla()) return false;
+        const int k = e->key();
+        if (k != Qt::Key_Return && k != Qt::Key_Enter && k != Qt::Key_Space) return false;
+        return (e->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier;
+    }
+
     void QG_GraphicView::keyPressEvent(QKeyEvent * e)
     {
         if (container == nullptr) {
+            return;
+        }
+
+        if (edwinEsTeclaEnter(e)) {
+            if (!e->isAutoRepeat() && edwin::enterVacio())
+                edwin::enterVacio()();
+            e->accept();
             return;
         }
 
@@ -945,6 +962,10 @@ void QG_GraphicView::wheelEvent(QWheelEvent *e) {
 
     void QG_GraphicView::keyReleaseEvent(QKeyEvent * e)
     {
+        if (edwinEsTeclaEnter(e)) {
+            e->accept();
+            return;
+        }
         eventHandler->keyReleaseEvent(e);
     }
 

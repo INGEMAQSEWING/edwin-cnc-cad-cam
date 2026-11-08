@@ -46,6 +46,9 @@
 
 #include "rs_debug.h"
 #include "rs_settings.h"
+#include "edwin_variante.h"
+
+#include <QToolButton>
 
 namespace {
     // only enable the penpallet by settings
@@ -583,6 +586,153 @@ void LC_WidgetFactory::createCADToolbars()
     main_window->addToolBar(Qt::BottomToolBarArea, modify_toolbar);
     main_window->addToolBar(Qt::BottomToolBarArea, info_toolbar);
     main_window->addToolBar(Qt::BottomToolBarArea, select_toolbar);
+}
+
+// ---------------------------------------------------------------------------
+// EDWIN CNC CAD2CAM: las barras Dibujo y Modificar en el orden del AutoCAD 2010 clásico,
+// con los nombres del AutoCAD en español y el comando entre paréntesis.
+void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
+{
+    struct Nombre { const char* accion; const char* texto; const char* comando; };
+    const Nombre nombres[] = {
+        // Dibujo
+        {"DrawLine", "Línea", "LINEA · L"},
+        {"DrawPolyline", "Polilínea", "POL · PL"},
+        {"DrawLinePolygonCenCor", "Polígono", "POLIGONO · PG"},
+        {"DrawLineRectangle", "Rectángulo", "RECTANG · REC"},
+        {"DrawArc3P", "Arco: 3 puntos", "ARCO · A"},
+        {"DrawArc", "Arco: centro, inicio, fin", ""},
+        {"DrawArcTangential", "Arco: tangente", ""},
+        {"DrawCircle", "Círculo: centro, punto", "CIRCULO · C"},
+        {"DrawCircleCR", "Círculo: centro, radio", ""},
+        {"DrawCircle2P", "Círculo: 2 puntos", ""},
+        {"DrawCircle3P", "Círculo: 3 puntos", ""},
+        {"DrawCircleTan2", "Círculo: tangente, tangente, radio", ""},
+        {"DrawCircleTan3", "Círculo: tangente, tangente, tangente", ""},
+        {"DrawSplinePoints", "Spline", "SPLINE · SPL"},
+        {"DrawEllipseAxis", "Elipse", "ELIPSE · EL"},
+        {"DrawEllipseArcAxis", "Arco elíptico", ""},
+        {"BlocksInsert", "Insertar bloque", "INSERT · IN"},
+        {"BlocksCreate", "Crear bloque", "BLOQUE · BQ"},
+        {"DrawPoint", "Punto", "PUNTO · PU"},
+        {"DrawHatch", "Sombreado", "SOMBCONT · SB"},
+        {"DrawMText", "Texto de líneas múltiples", "TEXTOM · T"},
+        {"DrawText", "Texto en una línea", "TEXTO · DT"},
+        // Modificar
+        {"ModifyDelete", "Borrar", "BORRA · B"},
+        {"ModifyMirror", "Simetría", "SIMETRIA · SI"},
+        {"ModifyOffset", "Desfase", "EQDIST · E"},
+        {"ModifyMove", "Desplazar", "DESPLAZA · D"},
+        {"ModifyRotate", "Girar", "GIRA · GI"},
+        {"ModifyScale", "Escala", "ESCALA · ES"},
+        {"ModifyStretch", "Estirar", "ESTIRA · EI"},
+        {"ModifyTrim", "Recortar / Alargar", "RECORTA · RR  /  ALARGA · AL"},
+        {"ModifyTrimAmount", "Longitud", "LONGITUD · LG"},
+        {"ModifyCut", "Partir en un punto", "PARTE · P"},
+        {"ModifyBreakDivide", "Partir entre intersecciones", ""},
+        {"PolylineSegment", "Juntar en polilínea", "JUNTAR · EDITPOL"},
+        {"ModifyBevel", "Chaflán", "CHAFLAN · CH"},
+        {"ModifyRound", "Empalme", "EMPALME · MP"},
+        {"BlocksExplode", "Descomponer", "DESCOMP · DP"},
+        {"ModifyMoveRotate", "Alinear (desplazar y girar)", "ALINEAR · ALI"},
+    };
+    for (const auto& n : nombres) {
+        QAction* a = a_map.value(n.accion, nullptr);
+        if (a == nullptr) continue;
+        const QString texto = QString::fromUtf8(n.texto);
+        a->setText(texto);
+        const QString comando = QString::fromUtf8(n.comando);
+        a->setToolTip(comando.isEmpty() ? texto : texto + "  (" + comando + ")");
+    }
+
+    auto agregar = [this](QToolBar* barra, const char* nombre) {
+        QAction* a = a_map.value(nombre, nullptr);
+        if (a != nullptr) barra->addAction(a);
+    };
+    // Botón con flecha para escoger la variante (Arco y Círculo, como en AutoCAD).
+    auto agregarConVariantes = [this](QToolBar* barra, const QStringList& nombres) {
+        QList<QAction*> acciones;
+        for (const auto& n : nombres)
+            if (a_map.value(n, nullptr) != nullptr) acciones << a_map.value(n);
+        if (acciones.isEmpty()) return;
+        auto boton = new QToolButton(barra);
+        boton->setPopupMode(QToolButton::MenuButtonPopup);
+        boton->setDefaultAction(acciones.first());
+        auto menu = new QMenu(boton);
+        menu->addActions(acciones);
+        boton->setMenu(menu);
+        // El botón muestra la última variante que se usó.
+        QObject::connect(menu, &QMenu::triggered, boton, &QToolButton::setDefaultAction);
+        barra->addWidget(boton);
+    };
+    auto nueva = [this](const QString& icono, const QString& texto, const QString& comando) {
+        auto a = new QAction(QIcon(icono), texto, main_window);
+        a->setToolTip(texto + "  (" + comando + ")");
+        return a;
+    };
+
+    QSizePolicy toolBarPolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    // <[~ Dibujo (izquierda) ~]>
+    auto dibujo = new QToolBar(QString::fromUtf8("Dibujo"), main_window);
+    dibujo->setObjectName("edwin_dibujo_toolbar");
+    dibujo->setSizePolicy(toolBarPolicy);
+    agregar(dibujo, "DrawLine");
+    agregar(dibujo, "DrawPolyline");
+    agregar(dibujo, "DrawLinePolygonCenCor");
+    agregar(dibujo, "DrawLineRectangle");
+    agregarConVariantes(dibujo, {"DrawArc3P", "DrawArc", "DrawArcTangential"});
+    agregarConVariantes(dibujo, {"DrawCircle", "DrawCircleCR", "DrawCircle2P", "DrawCircle3P",
+                                 "DrawCircleTan2", "DrawCircleTan3"});
+    QAction* arandela = nueva(":/icons/circle_concentric.svg", QString::fromUtf8("Arandela"),
+                              QString::fromUtf8("ARANDELA · AR"));
+    QObject::connect(arandela, &QAction::triggered, [](){
+        QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Arandela"));
+    });
+    dibujo->addAction(arandela);
+    agregar(dibujo, "DrawSplinePoints");
+    agregarConVariantes(dibujo, {"DrawEllipseAxis", "DrawEllipseArcAxis"});
+    dibujo->addSeparator();
+    agregar(dibujo, "BlocksInsert");
+    agregar(dibujo, "BlocksCreate");
+    agregar(dibujo, "DrawPoint");
+    agregar(dibujo, "DrawHatch");
+    agregar(dibujo, "DrawMText");
+
+    // <[~ Modificar (derecha) ~]>
+    auto modificar = new QToolBar(QString::fromUtf8("Modificar"), main_window);
+    modificar->setObjectName("edwin_modificar_toolbar");
+    modificar->setSizePolicy(toolBarPolicy);
+    agregar(modificar, "ModifyDelete");
+    QAction* copiar = nueva(":/icons/copy.svg", QString::fromUtf8("Copiar"), QString::fromUtf8("COPIA · CP"));
+    QObject::connect(copiar, &QAction::triggered, action_handler, &QG_ActionHandler::edwinCopiar);
+    modificar->addAction(copiar);
+    agregar(modificar, "ModifyMirror");
+    agregar(modificar, "ModifyOffset");
+    QAction* matriz = nueva(":/icons/edwin_matriz.svg", QString::fromUtf8("Matriz"), QString::fromUtf8("MATRIZ · MA"));
+    QObject::connect(matriz, &QAction::triggered, [](){
+        QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Matriz"));
+    });
+    modificar->addAction(matriz);
+    modificar->addSeparator();
+    agregar(modificar, "ModifyMove");
+    agregar(modificar, "ModifyRotate");
+    agregar(modificar, "ModifyScale");
+    agregar(modificar, "ModifyStretch");
+    modificar->addSeparator();
+    agregar(modificar, "ModifyTrim");
+    agregar(modificar, "ModifyTrimAmount");
+    agregar(modificar, "ModifyCut");
+    agregar(modificar, "ModifyBreakDivide");
+    agregar(modificar, "PolylineSegment");
+    agregar(modificar, "ModifyBevel");
+    agregar(modificar, "ModifyRound");
+    modificar->addSeparator();
+    agregar(modificar, "BlocksExplode");
+    agregar(modificar, "ModifyMoveRotate");
+
+    main_window->addToolBar(Qt::LeftToolBarArea, dibujo);
+    main_window->addToolBar(Qt::RightToolBarArea, modificar);
 }
 
 QToolBar* LC_WidgetFactory::createCategoriesToolbar()

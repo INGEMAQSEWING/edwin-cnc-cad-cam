@@ -37,6 +37,7 @@
 #include "rs_dialogfactory.h"
 #include "rs_math.h"
 #include "rs_settings.h"
+#include "edwin_variante.h"
 
 namespace {
 int calculatorCommandLength(const QString& input, bool acceptColon = false) {
@@ -175,7 +176,8 @@ void QG_CommandEdit::keyPressEvent(QKeyEvent* e)
         processInput(text());
         break;
     case Qt::Key_Space:
-        if (RS_SETTINGS->readNumEntry("/Keyboard/EvaluateCommandOnSpace", false))
+        // CAD2CAM: la barra espaciadora hace lo mismo que Enter (AutoCAD).
+        if (edwin::esCad2cam() || RS_SETTINGS->readNumEntry("/Keyboard/EvaluateCommandOnSpace", false))
             processInput(text());
         else if (!text().isEmpty())
             QLineEdit::keyPressEvent(e);

@@ -17,7 +17,7 @@ include(../../common.pri)
 # For plugins
 INCLUDEPATH    += ../../librecad/src/plugins
 
-SOURCES += edwincnc.cpp generador.cpp
+SOURCES += edwincnc.cpp generador.cpp herramientas.cpp
 
 HEADERS += edwincnc.h cam.h
 

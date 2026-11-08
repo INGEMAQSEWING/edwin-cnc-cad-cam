@@ -33,6 +33,7 @@
 #include "rs_modification.h"
 #include "rs_preview.h"
 #include "rs_debug.h"
+#include "edwin_variante.h"
 
 #include <QAction>
 #include <QMouseEvent>
@@ -144,7 +145,17 @@ void RS_ActionModifyMove::coordinateEvent(RS_CoordinateEvent* e) {
 		pPoints->targetPoint = pos;
 		graphicView->moveRelativeZero(pPoints->targetPoint);
         setStatus(ShowDialog);
-		if (RS_DIALOGFACTORY->requestMoveDialog(pPoints->data)) {
+		bool aceptado = false;
+		if (edwin::esCad2cam() && edwin::moverModo() >= 0) {
+			// CAD2CAM: Desplazar (0) o Copiar (1) sin ventana, como en AutoCAD.
+			pPoints->data.number = edwin::moverModo();
+			pPoints->data.useCurrentAttributes = false;
+			pPoints->data.useCurrentLayer = false;
+			aceptado = true;
+		} else {
+			aceptado = RS_DIALOGFACTORY->requestMoveDialog(pPoints->data);
+		}
+		if (aceptado) {
 			if(pPoints->data.number<0){
 				pPoints->data.number=abs(pPoints->data.number);
 				RS_DIALOGFACTORY->commandMessage(tr("Invalid number of copies, use %1 ").arg(pPoints->data.number));

@@ -61,6 +61,12 @@ public:
 	//return true if handled
 	bool commandLineActions(RS2::ActionType id);
 	bool command(const QString& cmd);
+	// EDWIN CNC CAD2CAM (estilo AutoCAD 2010)
+	void edwinEnterVacio();            // Enter o espacio sin texto: termina o repite el último comando
+	void edwinAlternarReferencias();   // F3: referencia a objetos sí / no
+	void edwinAlternarOrto();          // F8: orto sí / no
+	void edwinCopiar();                // Copiar (Desplazar dejando el original)
+	static bool edwinLanzarHerramienta(const QString& texto); // herramientas del menú EDWIN CNC
 	QStringList getAvailableCommands();
 	RS_SnapMode getSnaps();
 	RS2::SnapRestriction getSnapRestriction();

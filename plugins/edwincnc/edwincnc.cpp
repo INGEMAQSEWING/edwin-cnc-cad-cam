@@ -37,6 +37,11 @@ const char *CMD_GCODE = "Generar código G (Mach3)...";
 const char *CMD_LAMINA = "Lámina de referencia...";
 const char *CMD_CAPAS = "Crear capas de corte";
 const char *CMD_ACERCA = "Acerca de las herramientas EDWIN CNC";
+// Herramientas de dibujo estilo AutoCAD (también en las barras de EDWIN CNC CAD2CAM).
+// La barra de CAD2CAM las encuentra por el comienzo del texto: "Matriz" y "Arandela".
+const char *CMD_MATRIZ = "Matriz (filas y columnas o polar)...";
+const char *CMD_ARANDELA = "Arandela (dos círculos)...";
+const char *CMD_COMANDOS = "Comandos de teclado (estilo AutoCAD)";
 
 const QString CAPA_REVISION = "REVISION";
 
@@ -91,6 +96,9 @@ PluginCapabilities EdwinCnc::getCapabilities() const
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_GCODE))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_LAMINA))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_CAPAS))
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_MATRIZ))
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_ARANDELA))
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_COMANDOS))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_ACERCA));
     return pc;
 }
@@ -105,6 +113,41 @@ void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
         laminaDeReferencia(doc, parent);
     else if (cmd == QString::fromUtf8(CMD_CAPAS))
         crearCapas(doc, parent, true);
+    else if (cmd == QString::fromUtf8(CMD_MATRIZ))
+        matriz(doc, parent);
+    else if (cmd == QString::fromUtf8(CMD_ARANDELA))
+        arandela(doc, parent);
+    else if (cmd == QString::fromUtf8(CMD_COMANDOS))
+        QMessageBox::information(parent, QString::fromUtf8("Comandos de teclado"), QString::fromUtf8(
+            "<b>EDWIN CNC CAD2CAM</b> entiende los comandos del AutoCAD 2010 en español.<br>"
+            "Escriba la letra (no hace falta hacer clic en la línea de comandos) y presione "
+            "<b>Enter</b> o la <b>barra espaciadora</b>.<br><br>"
+            "<table cellspacing='0' cellpadding='3' border='1'>"
+            "<tr><th>Dibujo</th><th>Escriba</th><th>Modificar</th><th>Escriba</th></tr>"
+            "<tr><td>Línea</td><td>L · LINEA</td><td>Borrar</td><td>B · BORRA</td></tr>"
+            "<tr><td>Polilínea</td><td>PL · POL</td><td>Copiar</td><td>CP · CO · COPIA</td></tr>"
+            "<tr><td>Polígono</td><td>PG · POLIGONO</td><td>Simetría</td><td>SI · SIMETRIA</td></tr>"
+            "<tr><td>Rectángulo</td><td>REC · RECTANG</td><td>Desfase</td><td>E · EQ · EQDIST</td></tr>"
+            "<tr><td>Arco</td><td>A · ARCO</td><td>Matriz</td><td>MA · MATRIZ</td></tr>"
+            "<tr><td>Círculo</td><td>C · CIRCULO</td><td>Desplazar</td><td>D · DESPLAZA</td></tr>"
+            "<tr><td>Arandela</td><td>AR · ARANDELA</td><td>Girar</td><td>GI · GIRA</td></tr>"
+            "<tr><td>Spline</td><td>SPL · SPLINE</td><td>Escala</td><td>ES · ESCALA</td></tr>"
+            "<tr><td>Elipse</td><td>EL · ELIPSE</td><td>Estirar</td><td>EI · ESTIRA</td></tr>"
+            "<tr><td>Insertar bloque</td><td>IN · INSERT</td><td>Recortar</td><td>RR · RECORTA</td></tr>"
+            "<tr><td>Crear bloque</td><td>BQ · BLOQUE</td><td>Alargar</td><td>AL · ALARGA</td></tr>"
+            "<tr><td>Punto</td><td>PU · PUNTO</td><td>Partir</td><td>P · PARTE</td></tr>"
+            "<tr><td>Sombreado</td><td>SB · SOMBCONT</td><td>Juntar</td><td>JUNTAR · EDITPOL</td></tr>"
+            "<tr><td>Texto varias líneas</td><td>T · TEXTOM</td><td>Chaflán</td><td>CH · CHAFLAN</td></tr>"
+            "<tr><td>Texto una línea</td><td>DT · TEXTO</td><td>Empalme</td><td>MP · EM · EMPALME</td></tr>"
+            "<tr><td>Distancia</td><td>DI · DIST</td><td>Descomponer</td><td>DP · DESCOMP</td></tr>"
+            "<tr><td>Área</td><td>AA · AREA</td><td>Longitud</td><td>LG · LONGITUD</td></tr>"
+            "<tr><td>Zoom ventana / todo</td><td>Z / ZE</td><td>Alinear</td><td>ALI · ALINEAR</td></tr>"
+            "<tr><td>Encuadre</td><td>ENC · ENCUADRE</td><td>Deshacer</td><td>H · Ctrl+Z</td></tr>"
+            "</table><br>"
+            "<b>Enter</b> o <b>espacio</b>: termina el comando; si no hay comando, repite el último.<br>"
+            "<b>Esc</b>: cancela. <b>F3</b>: referencia a objetos sí/no. <b>F7</b>: rejilla. "
+            "<b>F8</b>: orto.<br>"
+            "Coordenadas: <b>@100,50</b> (relativas) y <b>@100&lt;45</b> (distancia y ángulo)."));
     else if (cmd == QString::fromUtf8(CMD_ACERCA))
         QMessageBox::information(parent, "EDWIN CNC",
             QString::fromUtf8(
@@ -120,6 +163,9 @@ void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
                 "REFERENCIA para ver si las piezas caben.<br><br>"
                 "<b>Crear capas de corte:</b> agrega CORTE (rojo), MARCADO (verde) y "
                 "REFERENCIA (gris) a un dibujo que no las tenga.<br><br>"
+                "<b>Matriz:</b> copias en filas y columnas, o alrededor de un centro "
+                "(por ejemplo los huecos de una brida).<br><br>"
+                "<b>Arandela:</b> dibuja el contorno de afuera y el hueco con sus diámetros.<br><br>"
                 "Las capas MARCADO, REFERENCIA, REVISION y RECORRIDO no se cortan."));
 }
 

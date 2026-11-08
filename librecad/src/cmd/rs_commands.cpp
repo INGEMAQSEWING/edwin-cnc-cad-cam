@@ -31,6 +31,7 @@
 #include <QTextStream>
 
 #include "rs_commands.h"
+#include "edwin_variante.h"
 
 #include "rs_debug.h"
 #include "rs_dialogfactory.h"
@@ -1276,6 +1277,65 @@ RS_Commands::RS_Commands() {
     }
 }
 
+namespace {
+// EDWIN CNC CAD2CAM: comandos y alias de AutoCAD 2010 en español (los nombres completos y
+// los alias del acad.pgp en español). Copiar, Matriz y Arandela se atienden aparte en
+// QG_ActionHandler::command. Los alias propios de LibreCAD que no choquen siguen sirviendo.
+const std::vector<std::pair<const char*, RS2::ActionType>> comandosAutocadEs = {
+    // Dibujo
+    {"l", RS2::ActionDrawLine}, {"linea", RS2::ActionDrawLine}, {"línea", RS2::ActionDrawLine},
+    {"pl", RS2::ActionDrawPolyline}, {"pol", RS2::ActionDrawPolyline}, {"polilinea", RS2::ActionDrawPolyline},
+    {"polilínea", RS2::ActionDrawPolyline},
+    {"pg", RS2::ActionDrawLinePolygonCenCor}, {"poligono", RS2::ActionDrawLinePolygonCenCor},
+    {"polígono", RS2::ActionDrawLinePolygonCenCor},
+    {"rec", RS2::ActionDrawLineRectangle}, {"rectang", RS2::ActionDrawLineRectangle},
+    {"a", RS2::ActionDrawArc3P}, {"arco", RS2::ActionDrawArc3P},
+    {"c", RS2::ActionDrawCircle}, {"circulo", RS2::ActionDrawCircle}, {"círculo", RS2::ActionDrawCircle},
+    {"spl", RS2::ActionDrawSplinePoints}, {"spline", RS2::ActionDrawSplinePoints},
+    {"el", RS2::ActionDrawEllipseAxis}, {"elipse", RS2::ActionDrawEllipseAxis},
+    {"in", RS2::ActionBlocksInsert}, {"inserta", RS2::ActionBlocksInsert}, {"insert", RS2::ActionBlocksInsert},
+    {"bq", RS2::ActionBlocksCreate}, {"bloque", RS2::ActionBlocksCreate},
+    {"pu", RS2::ActionDrawPoint}, {"punto", RS2::ActionDrawPoint},
+    {"sb", RS2::ActionDrawHatch}, {"sombcont", RS2::ActionDrawHatch}, {"sombrea", RS2::ActionDrawHatch},
+    {"t", RS2::ActionDrawMText}, {"txm", RS2::ActionDrawMText}, {"textom", RS2::ActionDrawMText},
+    {"dt", RS2::ActionDrawText}, {"texto", RS2::ActionDrawText},
+    // Modificar
+    {"b", RS2::ActionModifyDelete}, {"borra", RS2::ActionModifyDelete},
+    {"si", RS2::ActionModifyMirror}, {"simetria", RS2::ActionModifyMirror}, {"simetría", RS2::ActionModifyMirror},
+    {"e", RS2::ActionModifyOffset}, {"eq", RS2::ActionModifyOffset}, {"eqdist", RS2::ActionModifyOffset},
+    {"d", RS2::ActionModifyMove}, {"desplaza", RS2::ActionModifyMove},
+    {"gi", RS2::ActionModifyRotate}, {"gira", RS2::ActionModifyRotate},
+    {"es", RS2::ActionModifyScale}, {"escala", RS2::ActionModifyScale},
+    {"ei", RS2::ActionModifyStretch}, {"estira", RS2::ActionModifyStretch},
+    {"rr", RS2::ActionModifyTrim}, {"recorta", RS2::ActionModifyTrim},
+    {"al", RS2::ActionModifyTrim}, {"alarga", RS2::ActionModifyTrim},
+    {"p", RS2::ActionModifyCut}, {"parte", RS2::ActionModifyCut},
+    {"juntar", RS2::ActionPolylineSegment}, {"une", RS2::ActionPolylineSegment},
+    {"editpol", RS2::ActionPolylineSegment},
+    {"ch", RS2::ActionModifyBevel}, {"chaflan", RS2::ActionModifyBevel}, {"chaflán", RS2::ActionModifyBevel},
+    {"mp", RS2::ActionModifyRound}, {"em", RS2::ActionModifyRound}, {"empalme", RS2::ActionModifyRound},
+    {"dp", RS2::ActionBlocksExplode}, {"descomp", RS2::ActionBlocksExplode},
+    {"lg", RS2::ActionModifyTrimAmount}, {"longitud", RS2::ActionModifyTrimAmount},
+    {"ali", RS2::ActionModifyMoveRotate}, {"alinear", RS2::ActionModifyMoveRotate},
+    // Consulta
+    {"di", RS2::ActionInfoDist}, {"dist", RS2::ActionInfoDist},
+    {"aa", RS2::ActionInfoArea}, {"area", RS2::ActionInfoArea}, {"área", RS2::ActionInfoArea},
+    // Cotas
+    {"acolineal", RS2::ActionDimLinear}, {"acoalineada", RS2::ActionDimAligned},
+    {"acoradio", RS2::ActionDimRadial}, {"acodiametro", RS2::ActionDimDiametric},
+    {"acodiámetro", RS2::ActionDimDiametric}, {"acoangulo", RS2::ActionDimAngular},
+    {"acoángulo", RS2::ActionDimAngular},
+    // Vista y edición
+    {"z", RS2::ActionZoomWindow}, {"zoom", RS2::ActionZoomWindow},
+    {"ze", RS2::ActionZoomAuto}, {"zt", RS2::ActionZoomAuto},
+    {"encuadre", RS2::ActionZoomPan}, {"enc", RS2::ActionZoomPan},
+    {"rg", RS2::ActionZoomRedraw}, {"regen", RS2::ActionZoomRedraw},
+    {"re", RS2::ActionZoomRedraw}, {"redibuja", RS2::ActionZoomRedraw},
+    {"h", RS2::ActionEditUndo}, {"deshacer", RS2::ActionEditUndo},
+    {"rehacer", RS2::ActionEditRedo},
+};
+} // namespace
+
 /**
  * Read existing alias file or create one new.
  * In OS_WIN32 "c:\documents&settings\<user>\local configuration\application data\LibreCAD\librecad.alias"
@@ -1322,6 +1382,13 @@ void RS_Commands::updateAlias(){
     }
     //update alias file with non present commands
     //RLZ: to be written
+
+    // EDWIN CNC CAD2CAM: comandos de AutoCAD en español (antes de los alias del usuario,
+    // que pueden cambiarlos).
+    if (edwin::esCad2cam()) {
+        for (auto const& p: comandosAutocadEs)
+            m_shortCommands[QString::fromUtf8(p.first)] = p.second;
+    }
 
     //add alias to shortCommands
     for(auto const& p: aliasList){

@@ -44,6 +44,29 @@ SetCompressor /SOLID lzma
 !endif
 
 ;--------------------------------
+; Variante: EDWIN CNC CAD-CAM (normal) o EDWIN CNC CAD2CAM (/DCAD2CAM, estilo AutoCAD 2010).
+; Es el mismo programa: la variante la decide el nombre del .exe (EDWIN-CNC-CAD2CAM.exe).
+!ifdef CAD2CAM
+    !ifdef APPNAME
+        !undef APPNAME
+    !endif
+    !define APPNAME "EDWIN CNC CAD2CAM"
+    !define EXE "EDWIN-CNC-CAD2CAM.exe"
+    !define CARPETA "EDWIN CNC CAD2CAM"
+    !define SALIDA "EDWIN-CNC-CAD2CAM"
+    !define TITULO "EDWIN CNC CAD2CAM"
+    !define PROGID "EdwinCNC2"
+    !define EXTRA_BIENVENIDA "Variante CAD2CAM: barras Dibujo y Modificar y comandos del AutoCAD 2010 clásico, en español.$\r$\n$\r$\n"
+!else
+    !define EXE "EDWIN-CNC.exe"
+    !define CARPETA "EDWIN CNC CAD-CAM"
+    !define SALIDA "EDWIN-CNC-CAD-CAM"
+    !define TITULO "EDWIN CNC CAD/CAM"
+    !define PROGID "EdwinCNC"
+    !define EXTRA_BIENVENIDA ""
+!endif
+
+;--------------------------------
 ; Basic definitions
 !ifndef APPNAME
     !define APPNAME "EDWIN CNC CAD-CAM"
@@ -57,19 +80,19 @@ SetCompressor /SOLID lzma
 !ifdef DUAL
     ; Un solo instalador con las dos versiones (32 y 64 bits): instala la del Windows (ver .onInit).
     !define ARCH_SUFFIX "32-64bits"
-    InstallDir "$PROGRAMFILES\EDWIN CNC CAD-CAM"
+    InstallDir "$PROGRAMFILES\${CARPETA}"
 !else ifdef AMD64
     !define ARCH_SUFFIX "x64"
-    InstallDir "$PROGRAMFILES64\EDWIN CNC CAD-CAM"
+    InstallDir "$PROGRAMFILES64\${CARPETA}"
 !else
     !define ARCH_SUFFIX "x86"
-    InstallDir "$PROGRAMFILES\EDWIN CNC CAD-CAM"
+    InstallDir "$PROGRAMFILES\${CARPETA}"
 !endif
 
 ;--------------------------------
 ; General - Dynamic output filename with version and architecture
 Name "${APPNAME} ${SCMREVISION}"
-OutFile "../../generated/EDWIN-CNC-CAD-CAM-${SCMREVISION}-Windows-${ARCH_SUFFIX}.exe"
+OutFile "../../generated/${SALIDA}-${SCMREVISION}-Windows-${ARCH_SUFFIX}.exe"
 InstallDirRegKey HKLM "Software\${APPNAME}" ""
 RequestExecutionLevel admin
 VIProductVersion "${VIProductVersion}"
@@ -99,7 +122,7 @@ VIAddVersionKey "LegalCopyright" "© 2026 EDWIN CNC (funciones nuevas y mejoras)
 !ifdef DUAL
 Function .onInit
   ${If} ${RunningX64}
-    StrCpy $INSTDIR "$PROGRAMFILES64\EDWIN CNC CAD-CAM"
+    StrCpy $INSTDIR "$PROGRAMFILES64\${CARPETA}"
   ${EndIf}
 FunctionEnd
 !endif
@@ -107,7 +130,7 @@ FunctionEnd
 ;--------------------------------
 ; Interface
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN "$INSTDIR\EDWIN-CNC.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\${EXE}"
 ; Imagen de EDWIN CNC en Bienvenida/Final (164x314) y en el encabezado (150x57): edwin/instalador_imagenes.py.
 !define MUI_WELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
@@ -118,14 +141,14 @@ FunctionEnd
 ;--------------------------------
 ; Pages
 ; 1) Bienvenida de EDWIN CNC (propietario y desarrollador).
-!define MUI_WELCOMEPAGE_TITLE "Bienvenido a EDWIN CNC CAD/CAM"
-!define MUI_WELCOMEPAGE_TEXT "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3.$\r$\n$\r$\nPropietario y desarrollador: EDWIN CNC$\r$\nEdwin Xabier Segura Valencia, Cúcuta, Colombia.$\r$\n$\r$\nEDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
+!define MUI_WELCOMEPAGE_TITLE "Bienvenido a ${TITULO}"
+!define MUI_WELCOMEPAGE_TEXT "${EXTRA_BIENVENIDA}Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3.$\r$\n$\r$\nPropietario y desarrollador: EDWIN CNC$\r$\nEdwin Xabier Segura Valencia, Cúcuta, Colombia.$\r$\n$\r$\nEDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2) Créditos: EDWIN CNC y sus mejoras, y el software libre sobre el que está construido (edwin/instalador_textos.py).
 !define MUI_PAGE_HEADER_TEXT "Créditos"
 !define MUI_PAGE_HEADER_SUBTEXT "EDWIN CNC y el software libre que lo hace posible."
-!define MUI_LICENSEPAGE_TEXT_TOP "Quién hace EDWIN CNC CAD/CAM:"
+!define MUI_LICENSEPAGE_TEXT_TOP "Quién hace ${TITULO}:"
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "EDWIN CNC agrega funciones nuevas y mejora el programa en cada versión."
 !define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
 !insertmacro MUI_PAGE_LICENSE "creditos.rtf"
@@ -136,8 +159,8 @@ FunctionEnd
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_FINISHPAGE_TITLE "EDWIN CNC CAD/CAM está listo"
-!define MUI_FINISHPAGE_TEXT "Se instaló EDWIN CNC CAD/CAM, de EDWIN CNC.$\r$\n$\r$\nGracias por usarlo. Haz clic en Terminar para cerrar."
+!define MUI_FINISHPAGE_TITLE "${TITULO} está listo"
+!define MUI_FINISHPAGE_TEXT "Se instaló ${TITULO}, de EDWIN CNC.$\r$\n$\r$\nGracias por usarlo. Haz clic en Terminar para cerrar."
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -191,8 +214,8 @@ FunctionEnd
 ;--------------------------------
 ; Component descriptions
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "Archivos necesarios para EDWIN CNC CAD/CAM."
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecAssoc} "Abrir los archivos .dxf y .dwg con EDWIN CNC CAD/CAM al darles doble clic."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "Archivos necesarios para ${TITULO}."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecAssoc} "Abrir los archivos .dxf y .dwg con ${TITULO} al darles doble clic."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
@@ -258,13 +281,13 @@ Section "Main Section" SecMain
 
   SetShellVarContext all
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
-  CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\EDWIN-CNC.exe"
+  CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${EXE}"
   CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\EDWIN-CNC.exe"
+  CreateShortCut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXE}"
 
   ; Add/Remove Programs entries - show architecture
   WriteRegStr HKLM "${UNINSTKEY}" "DisplayName" "${APPNAME} ${SCMREVISION} (${ARCH_SUFFIX})"
-  WriteRegStr HKLM "${UNINSTKEY}" "DisplayIcon" "$INSTDIR\EDWIN-CNC.exe"
+  WriteRegStr HKLM "${UNINSTKEY}" "DisplayIcon" "$INSTDIR\${EXE}"
   WriteRegStr HKLM "${UNINSTKEY}" "DisplayVersion" "${SCMREVISION}"
   WriteRegStr HKLM "${UNINSTKEY}" "Publisher" "EDWIN CNC"
   WriteRegStr HKLM "${UNINSTKEY}" "URLInfoAbout" "https://librecad.org"
@@ -288,56 +311,56 @@ Section "Associate .dxf and .dwg files" SecAssoc
   ; written from an installer; users must pick LibreCAD in Settings > Default
   ; Apps or "Open with" to override an existing UserChoice.
   ReadRegStr $R0 HKCR ".dxf" ""
-  ${If} $R0 != "EdwinCNC.DXF"
+  ${If} $R0 != "${PROGID}.DXF"
     WriteRegStr HKLM "Software\${APPNAME}" "OldDXFAssoc" $R0
   ${EndIf}
   ReadRegStr $R0 HKCR ".dwg" ""
-  ${If} $R0 != "EdwinCNC.DWG"
+  ${If} $R0 != "${PROGID}.DWG"
     WriteRegStr HKLM "Software\${APPNAME}" "OldDWGAssoc" $R0
   ${EndIf}
 
   ; --- ProgIDs (icon + open command) ---
-  ; Use the embedded icon in EDWIN-CNC.exe (always present) rather than a
+  ; Use the embedded icon in ${EXE} (always present) rather than a
   ; separate .ico file that may not be deployed.
-  WriteRegStr HKCR "EdwinCNC.DXF" "" "AutoCAD DXF Drawing"
-  WriteRegStr HKCR "EdwinCNC.DXF" "FriendlyTypeName" "AutoCAD DXF Drawing"
-  WriteRegStr HKCR "EdwinCNC.DXF\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
-  WriteRegStr HKCR "EdwinCNC.DXF\shell\open\FriendlyAppName" "" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "EdwinCNC.DXF\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
+  WriteRegStr HKCR "${PROGID}.DXF" "" "AutoCAD DXF Drawing"
+  WriteRegStr HKCR "${PROGID}.DXF" "FriendlyTypeName" "AutoCAD DXF Drawing"
+  WriteRegStr HKCR "${PROGID}.DXF\DefaultIcon" "" "$INSTDIR\${EXE},0"
+  WriteRegStr HKCR "${PROGID}.DXF\shell\open\FriendlyAppName" "" "${TITULO}"
+  WriteRegStr HKCR "${PROGID}.DXF\shell\open\command" "" '"$INSTDIR\${EXE}" "%1"'
 
-  WriteRegStr HKCR "EdwinCNC.DWG" "" "AutoCAD DWG Drawing"
-  WriteRegStr HKCR "EdwinCNC.DWG" "FriendlyTypeName" "AutoCAD DWG Drawing"
-  WriteRegStr HKCR "EdwinCNC.DWG\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
-  WriteRegStr HKCR "EdwinCNC.DWG\shell\open\FriendlyAppName" "" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "EdwinCNC.DWG\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
+  WriteRegStr HKCR "${PROGID}.DWG" "" "AutoCAD DWG Drawing"
+  WriteRegStr HKCR "${PROGID}.DWG" "FriendlyTypeName" "AutoCAD DWG Drawing"
+  WriteRegStr HKCR "${PROGID}.DWG\DefaultIcon" "" "$INSTDIR\${EXE},0"
+  WriteRegStr HKCR "${PROGID}.DWG\shell\open\FriendlyAppName" "" "${TITULO}"
+  WriteRegStr HKCR "${PROGID}.DWG\shell\open\command" "" '"$INSTDIR\${EXE}" "%1"'
 
   ; --- Per-machine default association (works when no UserChoice exists) ---
-  WriteRegStr HKCR ".dxf" "" "EdwinCNC.DXF"
+  WriteRegStr HKCR ".dxf" "" "${PROGID}.DXF"
   WriteRegStr HKCR ".dxf" "Content Type" "image/vnd.dxf"
   WriteRegStr HKCR ".dxf" "PerceivedType" "document"
-  WriteRegStr HKCR ".dwg" "" "EdwinCNC.DWG"
+  WriteRegStr HKCR ".dwg" "" "${PROGID}.DWG"
   WriteRegStr HKCR ".dwg" "Content Type" "image/vnd.dwg"
   WriteRegStr HKCR ".dwg" "PerceivedType" "document"
 
   ; --- OpenWithProgIds: ensures LibreCAD always appears in "Open with" list,
   ; even if another app currently owns the default association.
-  WriteRegStr HKCR ".dxf\OpenWithProgIds" "EdwinCNC.DXF" ""
-  WriteRegStr HKCR ".dwg\OpenWithProgIds" "EdwinCNC.DWG" ""
+  WriteRegStr HKCR ".dxf\OpenWithProgIds" "${PROGID}.DXF" ""
+  WriteRegStr HKCR ".dwg\OpenWithProgIds" "${PROGID}.DWG" ""
 
   ; --- Applications key: lets Explorer's "Open with" describe the app. ---
-  WriteRegStr HKCR "Applications\EDWIN-CNC.exe" "FriendlyAppName" "EDWIN CNC CAD/CAM"
-  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\DefaultIcon" "" "$INSTDIR\EDWIN-CNC.exe,0"
-  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\shell\open\command" "" '"$INSTDIR\EDWIN-CNC.exe" "%1"'
-  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\SupportedTypes" ".dxf" ""
-  WriteRegStr HKCR "Applications\EDWIN-CNC.exe\SupportedTypes" ".dwg" ""
+  WriteRegStr HKCR "Applications\${EXE}" "FriendlyAppName" "${TITULO}"
+  WriteRegStr HKCR "Applications\${EXE}\DefaultIcon" "" "$INSTDIR\${EXE},0"
+  WriteRegStr HKCR "Applications\${EXE}\shell\open\command" "" '"$INSTDIR\${EXE}" "%1"'
+  WriteRegStr HKCR "Applications\${EXE}\SupportedTypes" ".dxf" ""
+  WriteRegStr HKCR "Applications\${EXE}\SupportedTypes" ".dwg" ""
 
   ; --- Capabilities + RegisteredApplications: makes LibreCAD selectable in
   ; Settings > Default Apps so users can pick it as their default. ---
-  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationName" "EDWIN CNC CAD/CAM"
+  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationName" "${TITULO}"
   WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationDescription" "Free 2D CAD application"
-  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationIcon" "$INSTDIR\EDWIN-CNC.exe,0"
-  WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dxf" "EdwinCNC.DXF"
-  WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dwg" "EdwinCNC.DWG"
+  WriteRegStr HKLM "Software\${APPNAME}\Capabilities" "ApplicationIcon" "$INSTDIR\${EXE},0"
+  WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dxf" "${PROGID}.DXF"
+  WriteRegStr HKLM "Software\${APPNAME}\Capabilities\FileAssociations" ".dwg" "${PROGID}.DWG"
   WriteRegStr HKLM "Software\RegisteredApplications" "${APPNAME}" "Software\${APPNAME}\Capabilities"
 
   ; Notify Windows of changes (SHCNE_ASSOCCHANGED)
@@ -357,7 +380,7 @@ Section "Uninstall"
 
   ; --- Restore .dxf association if it currently points to our ProgID ---
   ReadRegStr $R0 HKCR ".dxf" ""
-  ${If} $R0 == "EdwinCNC.DXF"
+  ${If} $R0 == "${PROGID}.DXF"
     ReadRegStr $R1 HKLM "Software\${APPNAME}" "OldDXFAssoc"
     ${If} $R1 == ""
       DeleteRegValue HKCR ".dxf" ""
@@ -368,7 +391,7 @@ Section "Uninstall"
 
   ; --- Restore .dwg association if it currently points to our ProgID ---
   ReadRegStr $R0 HKCR ".dwg" ""
-  ${If} $R0 == "EdwinCNC.DWG"
+  ${If} $R0 == "${PROGID}.DWG"
     ReadRegStr $R1 HKLM "Software\${APPNAME}" "OldDWGAssoc"
     ${If} $R1 == ""
       DeleteRegValue HKCR ".dwg" ""
@@ -378,13 +401,13 @@ Section "Uninstall"
   ${EndIf}
 
   ; --- Remove our entries from OpenWithProgIds (leaves other apps' entries alone) ---
-  DeleteRegValue HKCR ".dxf\OpenWithProgIds" "EdwinCNC.DXF"
-  DeleteRegValue HKCR ".dwg\OpenWithProgIds" "EdwinCNC.DWG"
+  DeleteRegValue HKCR ".dxf\OpenWithProgIds" "${PROGID}.DXF"
+  DeleteRegValue HKCR ".dwg\OpenWithProgIds" "${PROGID}.DWG"
 
   ; --- Remove our ProgIDs and Applications entry ---
-  DeleteRegKey HKCR "EdwinCNC.DXF"
-  DeleteRegKey HKCR "EdwinCNC.DWG"
-  DeleteRegKey HKCR "Applications\EDWIN-CNC.exe"
+  DeleteRegKey HKCR "${PROGID}.DXF"
+  DeleteRegKey HKCR "${PROGID}.DWG"
+  DeleteRegKey HKCR "Applications\${EXE}"
 
   ; --- Remove Default Apps registration ---
   DeleteRegValue HKLM "Software\RegisteredApplications" "${APPNAME}"

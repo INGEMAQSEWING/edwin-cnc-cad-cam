@@ -47,6 +47,7 @@
 #include "qc_applicationwindow.h"
 #include "rs_debug.h"
 #include "lc_crashhandler.h"
+#include "edwin_variante.h"
 
 #include "console_dxf2pdf.h"
 #include "console_dxf2png.h"
@@ -91,9 +92,15 @@ int main(int argc, char** argv)
 
     RS_DEBUG->setLevel(RS_Debug::D_WARNING);
 
+    // Variante por el nombre del programa: EDWIN-CNC-CAD2CAM.exe = estilo AutoCAD 2010.
+    if (argc > 0)
+        edwin::cad2camRef() = QFileInfo(QFile::decodeName(argv[0])).baseName()
+                                  .contains("CAD2CAM", Qt::CaseInsensitive);
+
     LC_Application app(argc, argv);
     QCoreApplication::setOrganizationName("EDWIN CNC");
-    QCoreApplication::setApplicationName("EDWIN CNC CAD-CAM");
+    // Cada variante guarda su configuración aparte (barras, comandos, etc.).
+    QCoreApplication::setApplicationName(edwin::esCad2cam() ? "EDWIN CNC CAD2CAM" : "EDWIN CNC CAD-CAM");
     QCoreApplication::setApplicationVersion(XSTR(LC_VERSION));
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 7, 0))
@@ -288,7 +295,7 @@ int main(int argc, char** argv)
     app.installEventFilter(&appWin);
 #endif
     RS_DEBUG->print("main: setting caption");
-    appWin.setWindowTitle("EDWIN CNC CAD/CAM");
+    appWin.setWindowTitle(edwin::esCad2cam() ? "EDWIN CNC CAD2CAM" : "EDWIN CNC CAD/CAM");
 
     RS_DEBUG->print("main: show main window");
 

@@ -156,3 +156,24 @@ jobs:
           name: EDWIN-CNC-CAD-CAM-${{ env.VERSION }}-32-y-64-bits
           path: EDWIN-CNC-CAD-CAM-*-Windows-32-y-64-bits.exe
           retention-days: 30
+
+      # Variante EDWIN CNC CAD2CAM (barras y comandos del AutoCAD 2010 clásico): es el mismo
+      # programa con el .exe llamado EDWIN-CNC-CAD2CAM.exe, en su propia carpeta y con su
+      # propio acceso directo (decidido con el usuario el 2026-11-08: programa aparte).
+      - name: Build CAD2CAM installer
+        shell: cmd
+        run: |
+          ren dual\x64\EDWIN-CNC.exe EDWIN-CNC-CAD2CAM.exe
+          ren dual\x86\EDWIN-CNC.exe EDWIN-CNC-CAD2CAM.exe
+          cd scripts\postprocess-windows
+          makensis.exe /V3 /DDUAL /DCAD2CAM /DSCMREVISION="%VERSION%" /DVIProductVersion="%VERSION%.0" nsis-msvc.nsi
+          if errorlevel 1 exit /b 1
+          cd ..\..
+          move generated\EDWIN-CNC-CAD2CAM-*-Windows-32-64bits.exe "EDWIN-CNC-CAD2CAM-%VERSION%-Windows-32-y-64-bits.exe"
+
+      - name: Upload CAD2CAM installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDWIN-CNC-CAD2CAM-${{ env.VERSION }}-32-y-64-bits
+          path: EDWIN-CNC-CAD2CAM-*-Windows-32-y-64-bits.exe
+          retention-days: 30

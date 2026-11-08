@@ -39,6 +39,8 @@ public:
 
     void createStandardToolbars(QG_ActionHandler* action_handler);
     void createCADToolbars();
+    // EDWIN CNC CAD2CAM: barras Dibujo (izquierda) y Modificar (derecha) del AutoCAD 2010 clásico.
+    void createAutocadToolbars(QG_ActionHandler* action_handler);
     void createMenus(QMenuBar* menu_bar);
     void createLeftSidebar(int columns, int icon_size);
     void createRightSidebar(QG_ActionHandler* action_handler);

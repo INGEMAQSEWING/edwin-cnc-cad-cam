@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- EDWIN CNC: icono de Matriz (copias en filas y columnas) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">
+  <g fill="none" stroke="#000000" stroke-width="3.5">
+    <rect x="6" y="6" width="12" height="12"/>
+    <rect x="26" y="6" width="12" height="12"/>
+    <rect x="46" y="6" width="12" height="12"/>
+    <rect x="6" y="26" width="12" height="12"/>
+    <rect x="26" y="26" width="12" height="12"/>
+    <rect x="46" y="26" width="12" height="12"/>
+    <rect x="6" y="46" width="12" height="12"/>
+    <rect x="26" y="46" width="12" height="12"/>
+    <rect x="46" y="46" width="12" height="12"/>
+  </g>
+</svg>

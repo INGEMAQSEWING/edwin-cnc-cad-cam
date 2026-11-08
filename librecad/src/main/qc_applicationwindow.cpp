@@ -89,6 +89,7 @@
 #include "rs_system.h"
 #include "rs_selection.h"
 #include "rs_units.h"
+#include "edwin_variante.h"
 
 #include "lc_actionfactory.h"
 #include "lc_actiongroupmanager.h"
@@ -279,6 +280,10 @@ QC_ApplicationWindow::QC_ApplicationWindow()
     a_factory.fillActionContainer(a_map, ag_manager);
 
     LC_WidgetFactory widget_factory(this, a_map, ag_manager);
+    // EDWIN CNC CAD2CAM: en lugar de la barra lateral de LibreCAD van las barras Dibujo y
+    // Modificar del AutoCAD 2010 clásico.
+    if (edwin::esCad2cam())
+        enable_left_sidebar = false;
     if (enable_left_sidebar){
         int leftSidebarColumnsCount = settings.value("Widgets/LeftToolbarColumnsCount", 5).toInt();
         widget_factory.createLeftSidebar(leftSidebarColumnsCount, icon_size);
@@ -286,8 +291,18 @@ QC_ApplicationWindow::QC_ApplicationWindow()
     if (enable_cad_toolbars)
         widget_factory.createCADToolbars();
     widget_factory.createRightSidebar(actionHandler);
-    widget_factory.createCategoriesToolbar();
+    if (edwin::esCad2cam())
+        widget_factory.createAutocadToolbars(actionHandler);
+    else
+        widget_factory.createCategoriesToolbar();
     widget_factory.createStandardToolbars(actionHandler);
+    if (edwin::esCad2cam()) {
+        // Pantalla limpia como AutoCAD: sin las barras de áreas de anclaje ni de creadores.
+        for (const char* nombre : {"dockareas_toolbar", "creators_toolbar"}) {
+            if (auto barra = findChild<QToolBar*>(nombre))
+                barra->hide();
+        }
+    }
 
     foreach(auto action, widget_factory.snap_toolbar->actions())
     {
@@ -310,7 +325,7 @@ QC_ApplicationWindow::QC_ApplicationWindow()
     }
     settings.endGroup();
 
-    if (settings.value("Startup/FirstLoad", 1).toBool())
+    if (settings.value("Startup/FirstLoad", 1).toBool() && !edwin::esCad2cam())
     {
         QStringList list;
         list << "DrawMText"
@@ -368,6 +383,25 @@ QC_ApplicationWindow::QC_ApplicationWindow()
 
     auto ctrl_m = new QShortcut(QKeySequence("Ctrl+M"), this);
     connect(ctrl_m, SIGNAL(activated()), this, SLOT(slotFocusCommandLine()));
+
+    if (edwin::esCad2cam()) {
+        // Teclas de AutoCAD: F3 referencia a objetos, F7 rejilla, F8 orto.
+        auto f3 = new QShortcut(QKeySequence(Qt::Key_F3), this);
+        f3->setContext(Qt::ApplicationShortcut);
+        connect(f3, &QShortcut::activated, actionHandler, &QG_ActionHandler::edwinAlternarReferencias);
+        auto f7 = new QShortcut(QKeySequence(Qt::Key_F7), this);
+        f7->setContext(Qt::ApplicationShortcut);
+        connect(f7, &QShortcut::activated, this, [this]() {
+            if (QAction* rejilla = a_map.value("ViewGrid", nullptr)) rejilla->trigger();
+        });
+        auto f8 = new QShortcut(QKeySequence(Qt::Key_F8), this);
+        f8->setContext(Qt::ApplicationShortcut);
+        connect(f8, &QShortcut::activated, actionHandler, &QG_ActionHandler::edwinAlternarOrto);
+        // Enter o espacio en el dibujo: termina o repite el último comando.
+        edwin::enterVacio() = [this]() {
+            if (actionHandler) actionHandler->command({});
+        };
+    }
 
     // This event filter allows sending key events to the command widget, therefore, no
     // need to activate the command widget before typing commands.

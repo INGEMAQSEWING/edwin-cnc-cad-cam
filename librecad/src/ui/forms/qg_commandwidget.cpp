@@ -43,6 +43,7 @@
 #include "rs_settings.h"
 #include "rs_system.h"
 #include "rs_utility.h"
+#include "edwin_variante.h"
 
 /*
  *  Constructs a QG_CommandWidget as a child of 'parent', with the
@@ -129,13 +130,27 @@ bool QG_CommandWidget::eventFilter(QObject */*obj*/, QEvent *event)
         switch(key) {
         case Qt::Key_Return:
         case Qt::Key_Enter:
-            if(!leCommand->text().size())
+            if(!leCommand->text().size()) {
+                // CAD2CAM: Enter sin texto termina o repite el último comando (AutoCAD).
+                if (edwin::esCad2cam() && actionHandler && !e->isAutoRepeat()) {
+                    e->accept();
+                    actionHandler->command({});
+                    return true;
+                }
                 return false;
+            }
             else
                 break;
         case Qt::Key_Escape:
             return false;
         case Qt::Key_Space:
+            // CAD2CAM: la barra espaciadora hace lo mismo que Enter (AutoCAD).
+            if (edwin::esCad2cam() && actionHandler && leCommand->text().isEmpty()) {
+                e->accept();
+                if (!e->isAutoRepeat())
+                    actionHandler->command({});
+                return true;
+            }
             if (!hasFocus() && RS_SETTINGS->readNumEntry("/Keyboard/ToggleFreeSnapOnSpace", false)) {
                 // do not take focus here
                 spacePressed();
