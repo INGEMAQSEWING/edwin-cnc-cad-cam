@@ -1,4 +1,4 @@
-; nsis-msvc.nsi
+﻿; nsis-msvc.nsi
 ; NSIS installer script optimized for MSVC Qt builds of LibreCAD
 ; Features:
 ; - Dynamic architecture detection (AMD64) → -x86 or -x64 in filename
@@ -17,6 +17,7 @@
 ; - Used /SOLID lzma compression for smaller installer size
 ; - Added version info to installer properties
 
+Unicode true
 SetCompressor /SOLID lzma
 
 !include "MUI2.nsh"
@@ -71,28 +72,71 @@ VIAddVersionKey "ProductName" "${APPNAME}"
 VIAddVersionKey "FileVersion" "${SCMREVISION}"
 VIAddVersionKey "ProductVersion" "${SCMREVISION}"
 VIAddVersionKey "FileDescription" "${APPNAME} Installer"
-VIAddVersionKey "LegalCopyright" "EDWIN CNC - basado en LibreCAD (GPLv2)"
+VIAddVersionKey "CompanyName" "EDWIN CNC"
+VIAddVersionKey "LegalCopyright" "© 2026 EDWIN CNC (funciones nuevas y mejoras) - basado en LibreCAD (GPLv2)"
 
 ;--------------------------------
 ; Interface
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\EDWIN-CNC.exe"
+; Imagen de EDWIN CNC en Bienvenida/Final (164x314) y en el encabezado (150x57): edwin/instalador_imagenes.py.
+!define MUI_WELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_BITMAP "instalador-encabezado.bmp"
+!define MUI_HEADERIMAGE_RIGHT
 
 ;--------------------------------
 ; Pages
+; 1) Bienvenida de EDWIN CNC (propietario y desarrollador).
+!define MUI_WELCOMEPAGE_TITLE "Bienvenido a EDWIN CNC CAD/CAM"
+!define MUI_WELCOMEPAGE_TEXT "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte y revísalas antes de cortar.$
+$
+$
+$
+Propietario y desarrollador: EDWIN CNC$
+$
+Edwin Xabier Segura Valencia, Cúcuta, Colombia.$
+$
+$
+$
+EDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$
+$
+$
+$
+Haz clic en Siguiente para continuar."
+!insertmacro MUI_PAGE_WELCOME
+
+; 2) Créditos: EDWIN CNC y sus mejoras, y el software libre sobre el que está construido (edwin/instalador_textos.py).
+!define MUI_PAGE_HEADER_TEXT "Créditos"
+!define MUI_PAGE_HEADER_SUBTEXT "EDWIN CNC y el software libre que lo hace posible."
+!define MUI_LICENSEPAGE_TEXT_TOP "Quién hace EDWIN CNC CAD/CAM:"
+!define MUI_LICENSEPAGE_TEXT_BOTTOM "EDWIN CNC agrega funciones nuevas y mejora el programa en cada versión."
+!define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
+!insertmacro MUI_PAGE_LICENSE "creditos.rtf"
+
+; 3) Licencia GPL (obligatoria, no se modifica: es la condición para usar LibreCAD como base).
+!define MUI_LICENSEPAGE_TEXT_TOP "Licencia de software libre (GPL v2): puedes usar, copiar y compartir este programa. Texto oficial en inglés:"
 !insertmacro MUI_PAGE_LICENSE "../../licenses/gpl-2.0.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_FINISHPAGE_TITLE "EDWIN CNC CAD/CAM está listo"
+!define MUI_FINISHPAGE_TEXT "Se instaló EDWIN CNC CAD/CAM, de EDWIN CNC.$
+$
+$
+$
+Gracias por usarlo. Haz clic en Terminar para cerrar."
+!insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
 ;--------------------------------
 ; Languages (multilingual)
+!insertmacro MUI_LANGUAGE "Spanish"
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "French"
 !insertmacro MUI_LANGUAGE "German"
-!insertmacro MUI_LANGUAGE "Spanish"
 !insertmacro MUI_LANGUAGE "SpanishInternational"
 !insertmacro MUI_LANGUAGE "SimpChinese"
 !insertmacro MUI_LANGUAGE "TradChinese"

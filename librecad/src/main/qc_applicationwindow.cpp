@@ -3667,6 +3667,8 @@ void QC_ApplicationWindow::showAboutWindow()
     QString info
     (
         QString("EDWIN CNC CAD/CAM 1.0") + "\n" +
+        QString::fromUtf8("© 2026 EDWIN CNC — Edwin Xabier Segura Valencia (Cúcuta, Colombia)") + "\n" +
+        QString::fromUtf8("Propietario de la marca y autor de las funciones nuevas y mejoras para corte por plasma.") + "\n" +
         QString("Basado en LibreCAD %1 (software libre GPLv2)").arg(XSTR(LC_VERSION)) + "\n" +
         #if defined(Q_CC_CLANG)
             tr("Compiler: Clang %1.%2.%3").arg(__clang_major__).arg(__clang_minor__).arg(__clang_patchlevel__) + "\n" +
