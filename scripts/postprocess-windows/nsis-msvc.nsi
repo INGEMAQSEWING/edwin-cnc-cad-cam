@@ -23,6 +23,7 @@ SetCompressor /SOLID lzma
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 !include "WinVer.nsh"
+!include "x64.nsh"
 
 ;--------------------------------
 ; Allow overrides (Qt path, version, installer name, etc.)
@@ -53,7 +54,11 @@ SetCompressor /SOLID lzma
 
 ;--------------------------------
 ; Dynamic architecture suffix and install directory
-!ifdef AMD64
+!ifdef DUAL
+    ; Un solo instalador con las dos versiones (32 y 64 bits): instala la del Windows (ver .onInit).
+    !define ARCH_SUFFIX "32-64bits"
+    InstallDir "$PROGRAMFILES\EDWIN CNC CAD-CAM"
+!else ifdef AMD64
     !define ARCH_SUFFIX "x64"
     InstallDir "$PROGRAMFILES64\EDWIN CNC CAD-CAM"
 !else
@@ -74,6 +79,30 @@ VIAddVersionKey "ProductVersion" "${SCMREVISION}"
 VIAddVersionKey "FileDescription" "${APPNAME} Installer"
 VIAddVersionKey "CompanyName" "EDWIN CNC"
 VIAddVersionKey "LegalCopyright" "© 2026 EDWIN CNC (funciones nuevas y mejoras) - basado en LibreCAD (GPLv2)"
+
+;--------------------------------
+; Vista del registro: 64 bits si el programa instalado es de 64 (en DUAL se decide al instalar).
+!macro VistaRegistro
+  !ifdef DUAL
+    ${If} ${RunningX64}
+      SetRegView 64
+    ${Else}
+      SetRegView 32
+    ${EndIf}
+  !else ifdef AMD64
+    SetRegView 64
+  !else
+    SetRegView 32
+  !endif
+!macroend
+
+!ifdef DUAL
+Function .onInit
+  ${If} ${RunningX64}
+    StrCpy $INSTDIR "$PROGRAMFILES64\EDWIN CNC CAD-CAM"
+  ${EndIf}
+FunctionEnd
+!endif
 
 ;--------------------------------
 ; Interface
@@ -172,15 +201,19 @@ Section "Main Section" SecMain
   SectionIn RO  ; Required section
 
   ; Set registry view based on architecture
-  !ifdef AMD64
-    SetRegView 64
-  !else
-    SetRegView 32
-  !endif
+  !insertmacro VistaRegistro
 
   SetOutPath "$INSTDIR"
   ; Copy all built files (windeployqt already placed everything needed)
-  File /r /x "*.pdb" "..\..\windows\*.*"
+  !ifdef DUAL
+    ${If} ${RunningX64}
+      File /r /x "*.pdb" "..\..\dual\x64\*.*"
+    ${Else}
+      File /r /x "*.pdb" "..\..\dual\x86\*.*"
+    ${EndIf}
+  !else
+    File /r /x "*.pdb" "..\..\windows\*.*"
+  !endif
 
   ; Fallback explicit plugin copies (non-fatal)
   SetOutPath "$INSTDIR\platforms"
@@ -202,6 +235,9 @@ Section "Main Section" SecMain
   File /nonfatal "librecad\ts\*.qm"
   File /nonfatal "..\..\librecad\ts\*.qm"
   File /nonfatal "..\..\plugins\ts\*.qm"
+  !ifdef DUAL
+    File /nonfatal "..\..\dual\qm\*.qm"
+  !endif
 
   ; === Package LFF fonts ===
   SetOutPath "$INSTDIR\resources\fonts"
@@ -244,11 +280,7 @@ SectionEnd
 Section "Associate .dxf and .dwg files" SecAssoc
 
   ; Set registry view (same as main section)
-  !ifdef AMD64
-    SetRegView 64
-  !else
-    SetRegView 32
-  !endif
+  !insertmacro VistaRegistro
 
   ; --- Backup existing per-machine associations (if not already ours) ---
   ; Note: per-user UserChoice (HKCU\...\FileExts\.dxf\UserChoice), if present,
@@ -316,11 +348,7 @@ SectionEnd
 Section "Uninstall"
 
   ; Set registry view based on architecture
-  !ifdef AMD64
-    SetRegView 64
-  !else
-    SetRegView 32
-  !endif
+  !insertmacro VistaRegistro
 
   SetShellVarContext all
   Delete "$DESKTOP\${APPNAME}.lnk"

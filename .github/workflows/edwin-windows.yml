@@ -1,4 +1,6 @@
-# EDWIN CNC CAD/CAM: instalador de Windows 64 bits (basado en LibreCAD 2.2.1, Qt 5.15).
+# EDWIN CNC CAD/CAM: compila para Windows de 64 y de 32 bits (basado en LibreCAD 2.2.1, Qt 5.15) y arma
+# 1) un instalador por versión y 2) UN instalador con las dos que pone la que corresponde al Windows
+#    (decidido con el usuario el 2026-11-07: los PC con Mach3 de sus clientes son en su mayoría de 32 bits).
 name: Compilar EDWIN CNC CAD-CAM (Windows)
 on:
   push:
@@ -10,26 +12,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Windows64:
+  compilar:
+    name: Compilar ${{ matrix.bits }}
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - bits: 64 bits
+            arch: x64
+            qt: win64_msvc2019_64
+            sufijo: x64
+          - bits: 32 bits
+            arch: x86
+            qt: win32_msvc2019
+            sufijo: x86
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup MSVC developer environment (64-bit)
+      - name: Setup MSVC developer environment
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x64
+          arch: ${{ matrix.arch }}
 
-      - name: Install Qt-5.15 (MSVC 2019 64-bit)
+      - name: Install Qt-5.15 (MSVC 2019)
         uses: jurplel/install-qt-action@v3
         with:
           version: '5.15.*'
           host: 'windows'
           target: 'desktop'
-          arch: 'win64_msvc2019_64'
+          arch: ${{ matrix.qt }}
           dir: '..'
           install-deps: 'true'
           cache: 'false'
@@ -67,11 +82,77 @@ jobs:
       - name: Rename installer
         shell: bash
         run: |
-          mv generated/*.exe "EDWIN-CNC-CAD-CAM-1.0.${{ github.run_number }}-Windows-x64.exe"
+          mv generated/*.exe "EDWIN-CNC-CAD-CAM-1.0.${{ github.run_number }}-Windows-${{ matrix.sufijo }}.exe"
 
-      - name: Upload artifact
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: EDWIN-CNC-CAD-CAM-1.0.${{ github.run_number }}
+          name: instalador-${{ matrix.sufijo }}
           path: EDWIN-CNC-CAD-CAM-*.exe
+          retention-days: 30
+
+      # Lo que necesita el instalador único: el programa ya armado (carpeta windows) y las traducciones.
+      - name: Prepare program for the combined installer
+        shell: bash
+        run: |
+          mkdir -p programa/app programa/qm
+          cp -r windows/. programa/app/
+          cp librecad/ts/*.qm plugins/ts/*.qm programa/qm/ 2>/dev/null || true
+          ls programa/app | head -40
+
+      - name: Upload program
+        uses: actions/upload-artifact@v4
+        with:
+          name: programa-${{ matrix.sufijo }}
+          path: programa
+          retention-days: 3
+
+  instalador:
+    name: Instalador único 32 y 64 bits
+    needs: compilar
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download program (64 bits)
+        uses: actions/download-artifact@v4
+        with:
+          name: programa-x64
+          path: descarga/x64
+
+      - name: Download program (32 bits)
+        uses: actions/download-artifact@v4
+        with:
+          name: programa-x86
+          path: descarga/x86
+
+      - name: Arrange
+        shell: bash
+        run: |
+          mkdir -p dual/x64 dual/x86 dual/qm
+          cp -r descarga/x64/app/. dual/x64/
+          cp -r descarga/x86/app/. dual/x86/
+          cp descarga/x64/qm/*.qm dual/qm/ 2>/dev/null || true
+          test -f dual/x64/EDWIN-CNC.exe && test -f dual/x86/EDWIN-CNC.exe
+          VERSION="1.0.${{ github.run_number }}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build combined installer
+        shell: cmd
+        run: |
+          if not exist generated mkdir generated
+          cd scripts\postprocess-windows
+          makensis.exe /V3 /DDUAL /DSCMREVISION="%VERSION%" /DVIProductVersion="%VERSION%.0" nsis-msvc.nsi
+          if errorlevel 1 exit /b 1
+          cd ..\..
+          move generated\EDWIN-CNC-CAD-CAM-*-Windows-32-64bits.exe "EDWIN-CNC-CAD-CAM-%VERSION%-Windows-32-y-64-bits.exe"
+
+      - name: Upload combined installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: EDWIN-CNC-CAD-CAM-${{ env.VERSION }}-32-y-64-bits
+          path: EDWIN-CNC-CAD-CAM-*-Windows-32-y-64-bits.exe
           retention-days: 30
