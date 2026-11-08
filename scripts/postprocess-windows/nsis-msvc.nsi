@@ -90,21 +90,7 @@ VIAddVersionKey "LegalCopyright" "© 2026 EDWIN CNC (funciones nuevas y mejoras)
 ; Pages
 ; 1) Bienvenida de EDWIN CNC (propietario y desarrollador).
 !define MUI_WELCOMEPAGE_TITLE "Bienvenido a EDWIN CNC CAD/CAM"
-!define MUI_WELCOMEPAGE_TEXT "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte y revísalas antes de cortar.$
-$
-$
-$
-Propietario y desarrollador: EDWIN CNC$
-$
-Edwin Xabier Segura Valencia, Cúcuta, Colombia.$
-$
-$
-$
-EDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$
-$
-$
-$
-Haz clic en Siguiente para continuar."
+!define MUI_WELCOMEPAGE_TEXT "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3.$\r$\n$\r$\nPropietario y desarrollador: EDWIN CNC$\r$\nEdwin Xabier Segura Valencia, Cúcuta, Colombia.$\r$\n$\r$\nEDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2) Créditos: EDWIN CNC y sus mejoras, y el software libre sobre el que está construido (edwin/instalador_textos.py).
@@ -122,11 +108,7 @@ Haz clic en Siguiente para continuar."
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_TITLE "EDWIN CNC CAD/CAM está listo"
-!define MUI_FINISHPAGE_TEXT "Se instaló EDWIN CNC CAD/CAM, de EDWIN CNC.$
-$
-$
-$
-Gracias por usarlo. Haz clic en Terminar para cerrar."
+!define MUI_FINISHPAGE_TEXT "Se instaló EDWIN CNC CAD/CAM, de EDWIN CNC.$\r$\n$\r$\nGracias por usarlo. Haz clic en Terminar para cerrar."
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES

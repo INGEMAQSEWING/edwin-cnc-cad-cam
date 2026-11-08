@@ -54,6 +54,8 @@ jobs:
           QTDIR=$(cygpath -m "$GITHUB_WORKSPACE/../Qt")
           sed "s|^CUSTOM_ROOT = .*|CUSTOM_ROOT = $ROOT|" CI/custom-win.pri > custom.pri
           sed "s|D:\\a\\LibreCAD\\Qt|$QTDIR|" CI/custom-win-x64.nsh > scripts/postprocess-windows/custom.nsh
+          # Nombre del instalador: EDWIN CNC CAD-CAM (no "LibreCAD (x64)", que venía en custom-win-x64.nsh).
+          sed -i -e "s|LibreCAD (x64)|EDWIN CNC CAD-CAM|" -e "s|LibreCADx64|EdwinCncCadCam|" -e "s|LibreCAD-Installer|EDWIN-CNC-CAD-CAM|" scripts/postprocess-windows/custom.nsh
           cat custom.pri scripts/postprocess-windows/custom.nsh
 
       - name: Build and package
