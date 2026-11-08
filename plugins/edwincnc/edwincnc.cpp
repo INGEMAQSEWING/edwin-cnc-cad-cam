@@ -33,6 +33,7 @@ namespace {
 
 const char *MENU = "EDWIN CNC";
 const char *CMD_REVISAR = "Revisar para corte";
+const char *CMD_GCODE = "Generar código G (Mach3)...";
 const char *CMD_LAMINA = "Lámina de referencia...";
 const char *CMD_CAPAS = "Crear capas de corte";
 const char *CMD_ACERCA = "Acerca de las herramientas EDWIN CNC";
@@ -46,7 +47,7 @@ const double TRAMO_MIN = 0.1;     // tramos más cortos que esto son "diminutos"
 
 bool esCapaSinCorte(const QString &capa) {
     const QString c = capa.trimmed().toUpper();
-    return c == "MARCADO" || c == "REFERENCIA" || c == CAPA_REVISION;
+    return c == "MARCADO" || c == "REFERENCIA" || c == CAPA_REVISION || c == "RECORRIDO" || c == "RECORRIDO RAPIDO";
 }
 
 double dist(const QPointF &a, const QPointF &b) {
@@ -87,6 +88,7 @@ PluginCapabilities EdwinCnc::getCapabilities() const
     PluginCapabilities pc;
     pc.menuEntryPoints
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_REVISAR))
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_GCODE))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_LAMINA))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_CAPAS))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_ACERCA));
@@ -97,6 +99,8 @@ void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
 {
     if (cmd == QString::fromUtf8(CMD_REVISAR))
         revisarParaCorte(doc, parent);
+    else if (cmd == QString::fromUtf8(CMD_GCODE))
+        generarCodigoG(doc, parent);
     else if (cmd == QString::fromUtf8(CMD_LAMINA))
         laminaDeReferencia(doc, parent);
     else if (cmd == QString::fromUtf8(CMD_CAPAS))
@@ -108,11 +112,15 @@ void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
                 "<b>Revisar para corte:</b> busca contornos abiertos, huecos pequeños, "
                 "líneas repetidas y tramos diminutos en las capas que se cortan, y los "
                 "marca con círculos en la capa REVISION.<br><br>"
+                "<b>Generar código G (Mach3):</b> reemplaza a SheetCAM. Con la separación de la silueta (kerf), "
+                "las colitas de entrada y de salida, el tiempo para perforar y la desaceleración al terminar, "
+                "corta primero los huecos y después el contorno de afuera, dibuja el recorrido en la capa "
+                "RECORRIDO y guarda el archivo .tap para Mach3 (plasma sin eje Z).<br><br>"
                 "<b>Lámina de referencia:</b> dibuja el tamaño de la lámina en la capa "
                 "REFERENCIA para ver si las piezas caben.<br><br>"
                 "<b>Crear capas de corte:</b> agrega CORTE (rojo), MARCADO (verde) y "
                 "REFERENCIA (gris) a un dibujo que no las tenga.<br><br>"
-                "Las capas MARCADO, REFERENCIA y REVISION no se revisan como corte."));
+                "Las capas MARCADO, REFERENCIA, REVISION y RECORRIDO no se cortan."));
 }
 
 void EdwinCnc::crearCapas(Document_Interface *doc, QWidget *parent, bool avisar)
