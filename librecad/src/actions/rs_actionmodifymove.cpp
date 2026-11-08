@@ -141,7 +141,7 @@ void RS_ActionModifyMove::coordinateEvent(RS_CoordinateEvent* e) {
         setStatus(SetTargetPoint);
         break;
 
-    case SetTargetPoint:
+    case SetTargetPoint: {
 		pPoints->targetPoint = pos;
 		graphicView->moveRelativeZero(pPoints->targetPoint);
         setStatus(ShowDialog);
@@ -164,6 +164,7 @@ void RS_ActionModifyMove::coordinateEvent(RS_CoordinateEvent* e) {
             trigger();
         }
         break;
+    }
 
     default:
         break;
