@@ -33,6 +33,10 @@
 #include "rs_modification.h"
 #include "rs_preview.h"
 #include "rs_debug.h"
+#include "rs_commandevent.h"
+#include "rs_math.h"
+#include "rs_settings.h"
+#include "edwin_variante.h"
 
 RS_ActionModifyOffset::RS_ActionModifyOffset(RS_EntityContainer& container,
                                              RS_GraphicView& graphicView)
@@ -93,6 +97,22 @@ void RS_ActionModifyOffset::mouseReleaseEvent(QMouseEvent* e) {
         deletePreview();
         init(getStatus()-1);
     }
+}
+
+// EDWIN CNC CAD2CAM: como en AutoCAD, se escribe la distancia (ej. 10) y Enter.
+void RS_ActionModifyOffset::commandEvent(RS_CommandEvent* e) {
+	if (!edwin::esCad2cam()) return;
+	bool ok = false;
+	double d = RS_Math::eval(e->getCommand(), &ok);
+	if (!ok || d <= 0.) return;
+	RS_SETTINGS->beginGroup("/Draw");
+	RS_SETTINGS->writeEntry("/ModifyOffsetDistance", QString::number(d, 'g', 12));
+	RS_SETTINGS->endGroup();
+	hideOptions();
+	showOptions();
+	data->distance = d;
+	RS_DIALOGFACTORY->commandMessage(QString::fromUtf8("Distancia de desfase: %1. Haga clic en el objeto, del lado hacia donde va la copia.").arg(d));
+	e->accept();
 }
 
 void RS_ActionModifyOffset::updateMouseButtonHints() {

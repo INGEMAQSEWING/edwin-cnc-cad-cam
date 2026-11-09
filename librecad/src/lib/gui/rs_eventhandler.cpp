@@ -36,6 +36,9 @@
 #include "rs_math.h"
 #include "rs_snapper.h"
 #include "rs_debug.h"
+#include "rs_graphicview.h"
+#include "edwin_variante.h"
+#include <cmath>
 
 namespace {
     bool isActive(const std::shared_ptr<RS_ActionInterface>& action) {
@@ -397,6 +400,33 @@ void RS_EventHandler::commandEvent(RS_CommandEvent* e) {
                                 RS_DIALOGFACTORY->commandMessage(
                                             "Expression Syntax Error");
                         e->accept();
+                    }
+                }
+
+                // EDWIN CNC CAD2CAM: distancia directa como en AutoCAD.
+                // Se escribe solo un número (ej. 100) y Enter: el punto queda a esa
+                // distancia del último punto, en la dirección donde está el ratón
+                // (respetando el orto F8).
+                if (!e->isAccepted() && edwin::esCad2cam() && relative_zero.valid
+                        && QRegExp(R"(^[0-9.+\-*/() ]+$)").exactMatch(cmd)) {
+                    bool ok = false;
+                    double d = RS_Math::eval(updateForFraction(cmd), &ok);
+                    auto gv = qobject_cast<RS_GraphicView*>(parent());
+                    if (ok && gv) {
+                        RS_Vector dir = gv->getMousePosition() - relative_zero;
+                        switch (gv->getSnapRestriction()) {
+                        case RS2::RestrictOrthogonal:
+                            if (std::abs(dir.x) >= std::abs(dir.y)) dir.y = 0.; else dir.x = 0.;
+                            break;
+                        case RS2::RestrictHorizontal: dir.y = 0.; break;
+                        case RS2::RestrictVertical: dir.x = 0.; break;
+                        default: break;
+                        }
+                        if (dir.magnitude() > RS_TOLERANCE) {
+                            RS_CoordinateEvent ce(relative_zero + dir.normalized() * d);
+                            currentActions.last()->coordinateEvent(&ce);
+                            e->accept();
+                        }
                     }
                 }
 
