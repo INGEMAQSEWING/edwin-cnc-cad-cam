@@ -184,6 +184,13 @@ void EdwinCnc::generarCodigoG(Document_Interface *doc, QWidget *parent)
     auto pausa = numero(0, 30, 2, " s");
     pausa->setToolTip(u("Pausa al terminar cada contorno, antes de apagar la antorcha (0 = sin pausa)."));
     auto origen = new QCheckBox(u("Al terminar, volver al origen (G00 X0 Y0)"));
+    auto lado = new QComboBox;
+    lado->addItems({u("Automático: la pieza por fuera y los huecos por dentro"),
+                    u("Todo por fuera de la línea"),
+                    u("Todo por dentro de la línea (por ejemplo, recortar algo dentro de una lámina)"),
+                    u("Sobre la línea (sin separación)")});
+    lado->setToolTip(u("De qué lado de la línea pasa la antorcha. Siempre empieza en Automático."));
+    form->addRow(u("Lado del corte:"), lado);
     form->addRow(u("Separación de la silueta (Kerf):"), kerf);
     form->addRow(u("Velocidad de corte (Feed rate):"), velocidad);
     form->addRow(u("Tiempo para perforar (Pierce delay):"), perforar);
@@ -223,6 +230,7 @@ void EdwinCnc::generarCodigoG(Document_Interface *doc, QWidget *parent)
         p.desacelerarPct = desPct->value();
         p.pausaFinal = pausa->value();
         p.volverAlOrigen = origen->isChecked();
+        p.lado = lado->currentIndex();
         return p;
     };
     ponerValores(leerPerfil(s, perfil->currentText()));
@@ -376,6 +384,7 @@ void EdwinCnc::generarCodigoG(Document_Interface *doc, QWidget *parent)
     const double minutos = largoCorte / std::max(1.0, prm.velocidad) + r.cortes.size() * prm.perforar / 60.0;
     QString t = u("<b>Código G guardado:</b><br>%1<br><br>").arg(archivo.toHtmlEscaped());
     t += u("<b>%1</b> contorno(s): %2 de afuera y %3 hueco(s).<br>").arg(r.cortes.size()).arg(int(r.cortes.size()) - huecos).arg(huecos);
+    if (prm.lado != 0) t += u("Lado del corte: <b>%1</b>.<br>").arg(lado->currentText());
     t += u("Corte: %1 mm · tiempo aproximado: %2 min (sin contar los movimientos rápidos).<br>")
              .arg(QString::number(largoCorte, 'f', 0)).arg(QString::number(minutos, 'f', 1));
     QStringList avisos;

@@ -188,6 +188,40 @@ int main() {
         ver(peor < 1e-6, "el hueco cuadrado se corta 1 mm por dentro, con esquinas vivas");
     }
 
+    // ─── 5. Lado del corte elegido a mano (lámina 100×100 con hueco r10, separación 2 mm) ───
+    std::printf("\nLado del corte: todo por fuera, todo por dentro, sobre la línea\n");
+    {
+        auto medir = [](int lado, double &cuadrado, double &radioHueco, bool &continuo) {
+            Entrada e;
+            agregarPolilinea(e, {{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {0, 0, 0, 0}, true);
+            agregarCirculo(e, {50, 50}, 10);
+            Parametros prm;
+            prm.kerf = 2;
+            prm.lado = lado;
+            const Resultado r = preparar(e, prm);
+            continuo = leer(codigoG(r, prm)).continuo && r.cortes.size() == 2;
+            cuadrado = radioHueco = 0;
+            if (r.cortes.size() != 2) return;
+            // Distancia (con signo) del recorrido del cuadrado al borde: + afuera, - adentro (en el medio del lado de abajo).
+            for (const Seg &s : r.cortes[1].camino)
+                for (int k = 0; k <= 10; ++k) {
+                    const P p = puntoEn(s, k / 10.0);
+                    if (std::fabs(p.x - 50) < 5 && p.y < 50) cuadrado = -p.y;
+                }
+            radioHueco = dist(r.cortes[0].camino.front().a, {50, 50});
+        };
+        double q, h;
+        bool c;
+        medir(1, q, h, c);
+        ver(c && std::fabs(q - 1) < 1e-6 && std::fabs(h - 11) < 1e-6, "todo por fuera: cuadrado 1 mm afuera y hueco a radio 11");
+        medir(2, q, h, c);
+        ver(c && std::fabs(q + 1) < 1e-6 && std::fabs(h - 9) < 1e-6, "todo por dentro: cuadrado 1 mm adentro y hueco a radio 9");
+        medir(3, q, h, c);
+        ver(c && std::fabs(q) < 1e-6 && std::fabs(h - 10) < 1e-6, "sobre la línea: sin separación");
+        medir(0, q, h, c);
+        ver(c && std::fabs(q - 1) < 1e-6 && std::fabs(h - 9) < 1e-6, "automático: igual que antes");
+    }
+
     std::printf("\n%d OK, %d MAL\n", oks, males);
     return males ? 1 : 0;
 }

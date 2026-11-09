@@ -349,6 +349,8 @@ struct Parametros {
     double desacelerarPct = 60;     // …a este % de la velocidad
     double pausaFinal = 0;          // Pausa al terminar el contorno, antes de apagar (s)
     bool volverAlOrigen = true;     // G00 X0 Y0 al final (como SheetCAM)
+    int lado = 0;                   // Lado del corte: 0 automático (afuera por fuera, huecos por dentro),
+                                    // 1 todo por fuera, 2 todo por dentro, 3 sobre la línea (sin separación)
     std::string nombreArchivo = "PIEZA.TAP";
     std::string nombrePieza = "Pieza";
 };
@@ -357,7 +359,9 @@ struct Parametros {
 struct Corte {
     Contorno camino;                // recorrido de la antorcha (con la separación aplicada)
     Contorno entrada, salida;       // colitas
-    bool hueco = false;             // hueco (corte por dentro) o contorno de afuera
+    bool hueco = false;             // hueco (está dentro de otro contorno) o contorno de afuera
+    bool porDentro = false;         // de qué lado de la línea va la antorcha (en automático = hueco)
+    bool sobreLinea = false;        // sin separación de la silueta
     int profundidad = 0;
     bool problema = false;          // el corte es más ancho que algún detalle
 };
@@ -447,14 +451,16 @@ inline Resultado preparar(const Entrada &e, const Parametros &prm, double tolUni
         Corte &k = listos[i];
         k.hueco = prof[i] % 2 == 1;
         k.profundidad = prof[i];
-        // Contorno de afuera: a favor del reloj (G02); hueco: contra el reloj (G03). Así va el .tap de SheetCAM.
+        k.porDentro = prm.lado == 1 ? false : prm.lado == 2 ? true : k.hueco;
+        k.sobreLinea = prm.lado == 3;
+        // Por fuera: a favor del reloj (G02); por dentro: contra el reloj (G03). Así va el .tap de SheetCAM.
         Contorno c = cs[i];
         const bool ccw = area(c) > 0;
-        if (k.hueco != ccw) c = invertir(c);
+        if (k.porDentro != ccw) c = invertir(c);
         // A favor del reloj, la derecha del avance es adentro; contra el reloj, también adentro del hueco… el
         // desperdicio queda a la IZQUIERDA del avance en ambos casos: se corre hacia la izquierda.
         bool prob = false;
-        c = desplazar(c, -prm.kerf / 2, prob);
+        if (!k.sobreLinea) c = desplazar(c, -prm.kerf / 2, prob);
         k.problema = prob || c.empty();
         if (c.empty()) continue;
         c = elegirInicio(c);
@@ -463,7 +469,7 @@ inline Resultado preparar(const Entrada &e, const Parametros &prm, double tolUni
         const P afueraIni = izquierda(tIni), afueraFin = izquierda(tFin);
         // En huecos chicos la colita no puede ser más larga que un tercio del hueco.
         double lim = 1e300;
-        if (k.hueco) lim = std::sqrt(std::fabs(area(c))) / 3;
+        if (k.porDentro) lim = std::sqrt(std::fabs(area(c))) / 3;
         k.entrada = colitaEntrada(ini, tIni, afueraIni, prm.entradaTipo, std::min(prm.entrada, lim));
         k.salida = colitaSalida(c.back().b, tFin, afueraFin, prm.salidaTipo, std::min(prm.salida, lim));
         if (k.problema) ++res.problemas;
@@ -550,7 +556,7 @@ inline std::string codigoG(const Resultado &r, const Parametros &prm) {
     const std::string fNormal = "F" + corto(prm.velocidad);
     const std::string fLenta = "F" + corto(prm.velocidad * prm.desacelerarPct / 100.0);
     for (const Corte &k : r.cortes) {
-        w.linea(std::string("(Operation: ") + (k.hueco ? "Inside" : "Outside") + " Offset, " + corto(prm.kerf) + ", T1: Plasma)");
+        w.linea(std::string("(Operation: ") + (k.sobreLinea ? "On Line" : k.porDentro ? "Inside" : "Outside") + " Offset, " + corto(prm.kerf) + ", T1: Plasma)");
         const P inicio = !k.entrada.empty() ? k.entrada.front().a : k.camino.front().a;
         w.linea("G00 X" + f4(inicio.x) + " Y" + f4(inicio.y));
         w.linea("M03");
