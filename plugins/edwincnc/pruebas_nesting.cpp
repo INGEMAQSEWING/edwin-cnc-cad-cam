@@ -168,6 +168,14 @@ int main() {
         revisar("largas sin girar", ps, o, r);
         ok(r.laminas == 1, "5 piezas de 2300x100 caben en 1 lamina sin girar");
     }
+    {   // 7) pieza gigante (por ejemplo, un dibujo en metros leído como mm) y coordenadas inválidas: no se cuelga
+        std::vector<Pieza> ps(3);
+        ps[0].afuera = rect(0, 0, 5e9, 5e9);
+        ps[1].afuera = {{0, 0}, {NAN, 0}, {10, 10}};
+        ps[2].afuera = rect(0, 0, 100, 100);
+        auto r = acomodar(ps, op);
+        ok(r.noCaben.size() == 2 && r.colocadas.size() == 1, "gigante e invalida van a 'no caben' sin reservar memoria");
+    }
     std::printf("\n%d de %d pruebas bien\n", total - fallos, total);
     return fallos ? 1 : 0;
 }

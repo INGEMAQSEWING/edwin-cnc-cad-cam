@@ -370,6 +370,60 @@ inline Resultado arandelaSinfin(double D, double d, double P, double holgura, do
     return r;
 }
 
+// Punto bien adentro de la pieza (lejos de los bordes y fuera de los huecos), para escribirle el nombre.
+// Devuelve también la distancia al borde más cercano (sirve para elegir el tamaño de la letra).
+inline Pt puntoAdentro(const Plana &p, double &holgura) {
+    holgura = 0;
+    std::vector<std::vector<Pt>> anillos;
+    for (const auto &c : p.cortes) {
+        std::vector<Pt> a;
+        for (size_t i = 0; i < c.size(); ++i) {
+            const V v = c[i], w = c[(i + 1) % c.size()];
+            a.push_back({v.x, v.y});
+            if (std::fabs(v.bulge) > 1e-12) {        // arco: unos puntos intermedios
+                const double th = 4 * std::atan(v.bulge), ch = std::hypot(w.x - v.x, w.y - v.y);
+                const double R = ch / (2 * std::sin(std::fabs(th) / 2)), h = std::sqrt(std::max(0.0, R * R - ch * ch / 4));
+                const double lado = ((v.bulge > 0) == (std::fabs(th) < PI)) ? 1.0 : -1.0;
+                const double cx = (v.x + w.x) / 2 - (w.y - v.y) / ch * h * lado, cy = (v.y + w.y) / 2 + (w.x - v.x) / ch * h * lado;
+                const double a1 = std::atan2(v.y - cy, v.x - cx);
+                for (int k = 1; k < 24; ++k) a.push_back({cx + R * std::cos(a1 + th * k / 24), cy + R * std::sin(a1 + th * k / 24)});
+            }
+        }
+        anillos.push_back(a);
+    }
+    if (anillos.empty() || anillos[0].empty()) return {};
+    double x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
+    for (Pt q : anillos[0]) { x0 = std::min(x0, q.x); y0 = std::min(y0, q.y); x1 = std::max(x1, q.x); y1 = std::max(y1, q.y); }
+    auto dentro = [&](Pt q) {
+        bool c = false;
+        for (const auto &a : anillos)
+            for (size_t i = 0, j = a.size() - 1; i < a.size(); j = i++)
+                if ((a[i].y > q.y) != (a[j].y > q.y) && q.x < (a[j].x - a[i].x) * (q.y - a[i].y) / (a[j].y - a[i].y) + a[i].x) c = !c;
+        return c;
+    };
+    auto distBorde = [&](Pt q) {
+        double d = 1e300;
+        for (const auto &a : anillos)
+            for (size_t i = 0, j = a.size() - 1; i < a.size(); j = i++) {
+                const double dx = a[i].x - a[j].x, dy = a[i].y - a[j].y, L = dx * dx + dy * dy;
+                double t = L > 0 ? ((q.x - a[j].x) * dx + (q.y - a[j].y) * dy) / L : 0;
+                t = std::max(0.0, std::min(1.0, t));
+                d = std::min(d, std::hypot(q.x - a[j].x - t * dx, q.y - a[j].y - t * dy));
+            }
+        return d;
+    };
+    Pt mejor{(x0 + x1) / 2, (y0 + y1) / 2};
+    const int n = 48;
+    for (int i = 0; i <= n; ++i)
+        for (int j = 0; j <= n; ++j) {
+            const Pt q{x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * j / n};
+            if (!dentro(q)) continue;
+            const double d = distBorde(q);
+            if (d > holgura) { holgura = d; mejor = q; }
+        }
+    return mejor;
+}
+
 // Caja (para poner las piezas una al lado de la otra).
 inline void caja(const Plana &p, double &x0, double &y0, double &x1, double &y1) {
     x0 = y0 = 1e300; x1 = y1 = -1e300;

@@ -244,7 +244,21 @@ inline Resultado acomodar(const std::vector<Pieza> &piezas, const Opciones &op) 
             for (const auto &h : piezas[i].huecos) { Poligono q; for (Pt p : h) q.push_back(girar(p, ang)); hs.push_back(q); }
             double x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
             for (Pt p : af) { x0 = std::min(x0, p.x); y0 = std::min(y0, p.y); x1 = std::max(x1, p.x); y1 = std::max(y1, p.y); }
-            const int nw = int(std::floor((x1 - x0) / c)) + 1, nh = int(std::floor((y1 - y0) / c)) + 1;
+            // Pieza vacía, con coordenadas inválidas o más grande que la lámina en este giro: no se arma su
+            // cuadrícula (podría ser enorme); queda marcada como que no cabe.
+            const double wc = (x1 - x0) / c, hc = (y1 - y0) / c;
+            bool finitos = true;
+            for (Pt p : af) finitos = finitos && std::isfinite(p.x) && std::isfinite(p.y);
+            for (const auto &h : hs) for (Pt p : h) finitos = finitos && std::isfinite(p.x) && std::isfinite(p.y);
+            if (af.size() < 3 || !finitos || !std::isfinite(wc) || !std::isfinite(hc) || wc + 1 > cw || hc + 1 > ch) {
+                Forma f;
+                f.angulo = ang;
+                f.nucleoW = cw + 1; f.nucleoH = ch + 1;
+                formas[i].push_back(std::move(f));
+                nucleos[i].emplace_back();
+                continue;
+            }
+            const int nw = int(std::floor(wc)) + 1, nh = int(std::floor(hc)) + 1;
             Bits nuc(nw, nh);
             std::vector<const Poligono *> anillos{&af};
             for (const auto &h : hs) anillos.push_back(&h);

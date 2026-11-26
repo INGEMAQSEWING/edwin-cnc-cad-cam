@@ -217,14 +217,18 @@ void EdwinCnc::insertarPieza(Document_Interface *doc, QWidget *parent)
                     doc->addLine(&a, &b);
                 }
             }
+            // nombre y medidas ADENTRO de la pieza (en REFERENCIA, no se corta): así viajan con ella al acomodarla
             doc->setLayer("REFERENCIA");
-            const double th = std::max(8.0, std::min(40.0, alto * 0.04));
-            QPointF t(x, base.y() - th * 1.8);
+            double holgura = 0;
+            const piezas::Pt c = piezas::puntoAdentro(p, holgura);
+            const double th = std::max(5.0, std::min(40.0, holgura * 0.35));
             QString nombre = u(p.nombre);
             if (p.cantidad > 1) nombre += u(n > 1 ? " (%1 de %2)" : " (cortar %2)").arg(k + 1).arg(p.cantidad);
-            doc->addText(nombre, "standard", &t, th, 0, DPI::HAlignLeft, DPI::VAlignTop);
-            QPointF t2(x, base.y() - th * 3.4);
-            doc->addText(u(p.nota), "standard", &t2, th * 0.8, 0, DPI::HAlignLeft, DPI::VAlignTop);
+            QPointF t(c.x + dx, c.y + dy + th * 0.6);
+            doc->addText(nombre, "standard", &t, th, 0, DPI::HAlignCenter, DPI::VAlignBottom);
+            QPointF t2(c.x + dx, c.y + dy - th * 0.2);
+            doc->addText(u(p.nota), "standard", &t2, th * 0.6, 0, DPI::HAlignCenter, DPI::VAlignTop);
+            (void)alto;
             x += (x1 - x0) + sep;
             ++dibujadas;
         }

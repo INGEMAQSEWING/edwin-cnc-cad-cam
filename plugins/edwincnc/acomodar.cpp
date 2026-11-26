@@ -118,7 +118,10 @@ void EdwinCnc::acomodarPiezas(Document_Interface *doc, QWidget *parent)
         QHash<int, QVariant> d;
         e->getData(&d);
         Ent x{e, d.value(DPI::LAYER).toString(), {}, false, false};
-        if (capaQueNoSeMueve(x.capa)) continue;
+        // De REFERENCIA solo se llevan los textos (el nombre de la pieza); las láminas viejas se quedan.
+        const int tipoEnt = d.value(DPI::ETYPE).toInt();
+        const bool texto = tipoEnt == DPI::TEXT || tipoEnt == DPI::MTEXT;
+        if (capaQueNoSeMueve(x.capa) && !(texto && x.capa.trimmed().toUpper() == "REFERENCIA")) continue;
         if (!capaSinCorte(x.capa)) {
             x.geom = tramos(e, x.tr);
             x.cerrada = !x.tr.cerrados.empty() && x.tr.sueltos.empty();
