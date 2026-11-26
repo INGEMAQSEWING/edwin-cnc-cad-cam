@@ -47,6 +47,8 @@
 #include "rs_polyline.h"
 #include "lc_splinepoints.h"
 #include "lc_undosection.h"
+#include "rs_dimaligned.h"
+#include "rs_solid.h"
 #include "intern/qc_actiongetpoint.h"
 #include "intern/qc_actiongetselect.h"
 #include "intern/qc_actiongetent.h"
@@ -1434,4 +1436,47 @@ QString Doc_plugin_interface::realToStr(const qreal num, const int units, const 
 
     QString msg = RS_Units::formatLinear(num,RS2::None,lf,pr);
     return msg;
+}
+
+// EDWIN CNC / DuctusArq: cota alineada real (se puede editar como cualquier cota).
+void Doc_plugin_interface::addDimAligned(QPointF p1, QPointF p2, QPointF linePoint, QString text){
+    if (!doc) {
+        RS_DEBUG->print("Doc_plugin_interface::addDimAligned: currentContainer is nullptr");
+        return;
+    }
+    const RS_Vector e1(p1.x(), p1.y()), e2(p2.x(), p2.y());
+    if (e1.distanceTo(e2) < RS_TOLERANCE) return;
+    // La línea de cota pasa por linePoint; el punto de definición es el pie de la
+    // perpendicular desde la segunda línea de referencia (igual que RS_ActionDimAligned).
+    const RS_Vector dir = (e2 - e1) / e1.distanceTo(e2);
+    const RS_Vector normal(-dir.y, dir.x);
+    const RS_Vector lp(linePoint.x(), linePoint.y());
+    const double desfase = (lp - e1).dotP(normal);
+    const RS_Vector def = e2 + normal * desfase;
+    RS_DimensionData data(def, RS_Vector(false), RS_MTextData::VAMiddle, RS_MTextData::HACenter,
+                          RS_MTextData::Exact, 1.0, text, "Standard", 0.0);
+    RS_DimAlignedData edata(e1, e2);
+    auto dim = new RS_DimAligned(doc, data, edata);
+    dim->setLayerToActive();
+    dim->setPenToActive();
+    dim->update();
+    doc->addEntity(dim);
+    LC_UndoSection undo(doc);
+    undo.addUndoable(dim);
+}
+
+// EDWIN CNC / DuctusArq: relleno sólido de 3 o 4 esquinas dadas en orden alrededor de la figura.
+void Doc_plugin_interface::addSolid(std::vector<QPointF> const& corners){
+    if (!doc || corners.size() < 3) return;
+    auto v = [&corners](size_t i) { return RS_Vector(corners[i].x(), corners[i].y()); };
+    RS_SolidData d = corners.size() == 3
+        ? RS_SolidData(v(0), v(1), v(2))
+        // RS_Solid llena los triángulos 0-1-2 y 1-2-3 (orden DXF): se cruzan las dos últimas.
+        : RS_SolidData(v(0), v(1), v(3), v(2));
+    auto solid = new RS_Solid(doc, d);
+    solid->setLayerToActive();
+    solid->setPenToActive();
+    doc->addEntity(solid);
+    LC_UndoSection undo(doc);
+    undo.addUndoable(solid);
 }

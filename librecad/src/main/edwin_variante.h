@@ -24,7 +24,12 @@
 namespace edwin {
 
 inline bool &cad2camRef() { static bool v = false; return v; }
-inline bool esCad2cam() { return cad2camRef(); }
+// DuctusArq 2D (DuctusArq-2D.exe): planos de arquitectura e ingeniería. Usa el mismo manejo
+// estilo AutoCAD que CAD2CAM (barras, comandos en español, Enter repite) y agrega el menú y la
+// barra de Arquitectura; las herramientas de plasma no aparecen.
+inline bool &ductusArqRef() { static bool v = false; return v; }
+inline bool esDuctusArq() { return ductusArqRef(); }
+inline bool esCad2cam() { return cad2camRef() || ductusArqRef(); }
 
 // Desplazar / Copiar sin ventana en CAD2CAM (como en AutoCAD).
 //   moverModo: -1 = ventana normal de LibreCAD, 0 = desplazar, 1 = copiar.

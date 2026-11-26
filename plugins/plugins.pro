@@ -21,7 +21,8 @@ SUBDIRS     = \
         pointstocsv \
         gear \
         circletools \
-        edwincnc
+        edwincnc \
+        ductusarq
 
 TRANSLATIONS = ./ts/plugins_ar.ts \
     ./ts/plugins_ca.ts \

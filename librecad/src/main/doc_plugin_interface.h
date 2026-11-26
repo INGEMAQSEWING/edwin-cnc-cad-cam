@@ -127,6 +127,8 @@ public:
     bool getReal(qreal *num, const QString& message, const QString& title) override;
     bool getString(QString *txt, const QString& message, const QString& title) override;
     QString realToStr(const qreal num, const int units = 0, const int prec = 0) override;
+    void addDimAligned(QPointF p1, QPointF p2, QPointF linePoint, QString text = QString()) override;
+    void addSolid(std::vector<QPointF> const& corners) override;
 
     //method to handle undo in Plugin_Entity 
     bool addToUndo(RS_Entity* current, RS_Entity* modified, DPI::Disposition how);

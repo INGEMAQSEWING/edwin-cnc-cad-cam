@@ -14,6 +14,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -93,6 +94,16 @@ QString EdwinCnc::name() const
 PluginCapabilities EdwinCnc::getCapabilities() const
 {
     PluginCapabilities pc;
+    // DuctusArq 2D (planos de arquitectura) no usa las herramientas de plasma: solo Matriz,
+    // Arandela y la lista de comandos, que van en el menú «Herramientas».
+    if (QCoreApplication::applicationName().contains("DuctusArq", Qt::CaseInsensitive)) {
+        const char *menu = "Herramientas";
+        pc.menuEntryPoints
+            << PluginMenuLocation(menu, QString::fromUtf8(CMD_MATRIZ))
+            << PluginMenuLocation(menu, QString::fromUtf8(CMD_ARANDELA))
+            << PluginMenuLocation(menu, QString::fromUtf8(CMD_COMANDOS));
+        return pc;
+    }
     pc.menuEntryPoints
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_PIEZA))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_ACOMODAR))

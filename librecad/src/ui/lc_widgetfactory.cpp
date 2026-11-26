@@ -733,6 +733,36 @@ void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
 
     main_window->addToolBar(Qt::LeftToolBarArea, dibujo);
     main_window->addToolBar(Qt::RightToolBarArea, modificar);
+
+    // <[~ Arquitectura (arriba, solo DuctusArq 2D) ~]>
+    // Botones de texto que abren las herramientas del plugin DuctusArq (las encuentra por el
+    // comienzo del texto del menú, igual que Matriz y Arandela).
+    if (edwin::esDuctusArq()) {
+        auto arq = new QToolBar(QString::fromUtf8("Arquitectura"), main_window);
+        arq->setObjectName("ductusarq_toolbar");
+        arq->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        struct Boton { const char* texto; const char* herramienta; const char* comando; };
+        const Boton botones[] = {
+            {"Casa rápida", "Casa rápida", "CASA"},
+            {"Ejes", "Ejes", "EJES · EJ"},
+            {"Columnas", "Columnas", "COLUMNA · COL"},
+            {"Muro", "Muro", "MURO · MU"},
+            {"Pórtico", "Pórtico", "PORTICO · POR"},
+            {"Cimentación", "Cimentación", "CIMENTACION · CIM"},
+            {"Rótulo", "Rótulo", "ROTULO · ROT"},
+            {"Medidas y escala", "Sistema de medidas", "MEDIDAS"},
+        };
+        for (const auto& b : botones) {
+            auto a = new QAction(QString::fromUtf8(b.texto), main_window);
+            a->setToolTip(QString::fromUtf8(b.texto) + "  (" + QString::fromUtf8(b.comando) + ")");
+            const QString herramienta = QString::fromUtf8(b.herramienta);
+            QObject::connect(a, &QAction::triggered, [herramienta]() {
+                QG_ActionHandler::edwinLanzarHerramienta(herramienta);
+            });
+            arq->addAction(a);
+        }
+        main_window->addToolBar(Qt::TopToolBarArea, arq);
+    }
 }
 
 QToolBar* LC_WidgetFactory::createCategoriesToolbar()

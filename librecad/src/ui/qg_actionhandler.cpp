@@ -1386,6 +1386,24 @@ bool QG_ActionHandler::command(const QString& cmd)
                 return edwinLanzarHerramienta(QString::fromUtf8("Matriz"));
             if (c == "ar" || c == "arandela")
                 return edwinLanzarHerramienta(QString::fromUtf8("Arandela"));
+            // DuctusArq 2D: herramientas de arquitectura por teclado.
+            if (edwin::esDuctusArq()) {
+                struct Alias { const char* herramienta; const char* comandos; };
+                const Alias alias[] = {
+                    {"Casa rápida", "casa"},
+                    {"Ejes", "ej eje ejes"},
+                    {"Columnas", "col columna columnas"},
+                    {"Muro", "mu muro muros"},
+                    {"Pórtico", "por portico pórtico"},
+                    {"Cimentación", "cim cimentacion cimentación zapata zapatas"},
+                    {"Rótulo", "rot rotulo rótulo cajetin cajetín"},
+                    {"Sistema de medidas", "medidas unidades"},
+                    {"Capas de arquitectura", "capasarq"},
+                };
+                for (const auto& a : alias)
+                    if (QString::fromUtf8(a.comandos).split(' ').contains(c))
+                        return edwinLanzarHerramienta(QString::fromUtf8(a.herramienta));
+            }
             RS2::ActionType tipo = RS_COMMANDS->cmdToAction(c);
             if (tipo != RS2::ActionNone) {
                 if (!commandLineActions(tipo))

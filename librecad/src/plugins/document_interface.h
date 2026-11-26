@@ -525,6 +525,18 @@ public:
     * \return a string with the converted number.
     */
     virtual QString realToStr(const qreal num, const int units = 0, const int prec = 0) = 0;
+
+    /*! EDWIN CNC / DuctusArq: add an aligned dimension (real, editable dimension entity) in
+    *   the current layer, measured from p1 to p2; the dimension line passes through
+    *   \p linePoint. Sizes come from the drawing's $DIM* variables.
+    *  \param text optional text ("" = measured value).
+    */
+    virtual void addDimAligned(QPointF p1, QPointF p2, QPointF linePoint, QString text = QString()) = 0;
+
+    /*! EDWIN CNC / DuctusArq: add a solid fill (3 or 4 corners, in order around the
+    *   shape) in the current layer, e.g. a column in plan.
+    */
+    virtual void addSolid(std::vector<QPointF> const& corners) = 0;
 };
 
 

@@ -46,7 +46,20 @@ SetCompressor /SOLID lzma
 ;--------------------------------
 ; Variante: EDWIN CNC CAD-CAM (normal) o EDWIN CNC CAD2CAM (/DCAD2CAM, estilo AutoCAD 2010).
 ; Es el mismo programa: la variante la decide el nombre del .exe (EDWIN-CNC-CAD2CAM.exe).
-!ifdef CAD2CAM
+!ifdef DUCTUSARQ
+    ; DuctusArq 2D (/DDUCTUSARQ): planos de arquitectura e ingeniería (DuctusArq-2D.exe).
+    !ifdef APPNAME
+        !undef APPNAME
+    !endif
+    !define APPNAME "DuctusArq 2D"
+    !define EXE "DuctusArq-2D.exe"
+    !define CARPETA "DuctusArq 2D"
+    !define SALIDA "DuctusArq-2D"
+    !define TITULO "DuctusArq 2D"
+    !define PROGID "DuctusArq2D"
+    !define EXTRA_BIENVENIDA ""
+    !define TEXTO_PROGRAMA "Programa de planos de arquitectura e ingeniería de la suite OpenDuctus: ejes, muros, columnas, pórticos, cimentación, cotas y rótulo por especialidad, en metros o en pies y pulgadas. Abre y guarda DXF; abre DWG."
+!else ifdef CAD2CAM
     !ifdef APPNAME
         !undef APPNAME
     !endif
@@ -64,6 +77,9 @@ SetCompressor /SOLID lzma
     !define TITULO "EDWIN CNC CAD/CAM"
     !define PROGID "EdwinCNC"
     !define EXTRA_BIENVENIDA ""
+!endif
+!ifndef TEXTO_PROGRAMA
+    !define TEXTO_PROGRAMA "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3."
 !endif
 
 ;--------------------------------
@@ -142,7 +158,7 @@ FunctionEnd
 ; Pages
 ; 1) Bienvenida de EDWIN CNC (propietario y desarrollador).
 !define MUI_WELCOMEPAGE_TITLE "Bienvenido a ${TITULO}"
-!define MUI_WELCOMEPAGE_TEXT "${EXTRA_BIENVENIDA}Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3.$\r$\n$\r$\nPropietario y desarrollador: EDWIN CNC$\r$\nEdwin Xabier Segura Valencia, Cúcuta, Colombia.$\r$\n$\r$\nEDWIN CNC le agrega funciones nuevas para el corte por plasma y lo sigue mejorando en cada versión.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
+!define MUI_WELCOMEPAGE_TEXT "${EXTRA_BIENVENIDA}${TEXTO_PROGRAMA}$\r$\n$\r$\nPropietario y desarrollador: EDWIN CNC$\r$\nEdwin Xabier Segura Valencia, Cúcuta, Colombia.$\r$\n$\r$\nEDWIN CNC le agrega funciones nuevas y lo sigue mejorando en cada versión.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2) Créditos: EDWIN CNC y sus mejoras, y el software libre sobre el que está construido (edwin/instalador_textos.py).

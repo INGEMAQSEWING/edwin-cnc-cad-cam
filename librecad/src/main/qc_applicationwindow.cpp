@@ -2278,8 +2278,64 @@ QC_MDIWindow* QC_ApplicationWindow::slotFileNew(RS_Document* doc) {
 //   CORTE (rojo): lo que corta la antorcha. Queda como capa activa.
 //   MARCADO (verde): marcas sin perforar la lamina.
 //   REFERENCIA (gris, a trazos): lineas de construccion y la lamina; nunca se cortan.
+// DuctusArq 2D: todo dibujo nuevo trae las capas de arquitectura e ingeniería, las unidades del
+// sistema elegido (metros, o pulgadas con cotas en pies y pulgadas como en EE. UU.) y las cotas
+// a la escala de impresión guardada (por defecto 1:50 / 1/4" = 1'-0"). El menú DuctusArq ▸
+// «Sistema de medidas y escala» cambia lo mismo en el dibujo abierto.
+static void ductusArqDibujoNuevo(RS_Graphic* graphic) {
+    if (graphic == nullptr) return;
+    QSettings cfg;
+    const bool imperial = cfg.value("DuctusArq/Sistema", "metrico").toString() == "imperial";
+    const double escala = cfg.value(imperial ? "DuctusArq/EscalaImperial" : "DuctusArq/EscalaMetrica",
+                                    imperial ? 48.0 : 50.0).toDouble();
+    graphic->setUnit(imperial ? RS2::Inch : RS2::Meter);
+    // Tamaños de cota en mm de papel; $DIMSCALE los lleva a unidades del dibujo.
+    graphic->addVariable("$DIMSCALE", imperial ? escala / 25.4 : escala / 1000.0, 40);
+    graphic->addVariable("$DIMTXT", 2.5, 40);
+    graphic->addVariable("$DIMASZ", 2.5, 40);
+    graphic->addVariable("$DIMTSZ", 1.5, 40);   // marca oblicua de arquitectura en vez de flecha
+    graphic->addVariable("$DIMEXE", 1.5, 40);
+    graphic->addVariable("$DIMEXO", 1.5, 40);
+    graphic->addVariable("$DIMGAP", 1.0, 40);
+    graphic->addVariable("$DIMLUNIT", imperial ? 4 : 2, 70);  // 4 = pies y pulgadas, 2 = decimal
+    graphic->addVariable("$DIMDEC", imperial ? 4 : 2, 70);    // metros con 2 decimales; 1/16"
+    graphic->addVariable("$DIMZIN", imperial ? 0 : 8, 70);
+    graphic->addVariable("$LUNITS", imperial ? 4 : 2, 70);
+    graphic->addVariable("$LUPREC", imperial ? 4 : 2, 70);
+
+    struct Capa { const char* nombre; int r, g, b; RS2::LineWidth ancho; RS2::LineType tipo; };
+    const Capa capas[] = {
+        {"A-EJES", 200, 0, 0, RS2::Width05, RS2::DashDotLine},
+        {"A-MUROS", 0, 0, 0, RS2::Width11, RS2::SolidLine},
+        {"A-COLUMNAS", 0, 0, 0, RS2::Width11, RS2::SolidLine},
+        {"A-PUERTAS", 190, 140, 0, RS2::Width07, RS2::SolidLine},
+        {"A-VENTANAS", 0, 150, 190, RS2::Width07, RS2::SolidLine},
+        {"A-ESCALERAS", 90, 90, 90, RS2::Width07, RS2::SolidLine},
+        {"A-COTAS", 0, 140, 0, RS2::Width05, RS2::SolidLine},
+        {"A-TEXTOS", 0, 0, 160, RS2::Width07, RS2::SolidLine},
+        {"A-SIMBOLOS", 120, 0, 160, RS2::Width05, RS2::SolidLine},
+        {"A-MOBILIARIO", 140, 140, 140, RS2::Width03, RS2::SolidLine},
+        {"S-CIMENTACION", 170, 0, 170, RS2::Width09, RS2::DashLine},
+        {"S-PORTICOS", 0, 80, 200, RS2::Width09, RS2::SolidLine},
+        {"G-ROTULO", 0, 0, 0, RS2::Width09, RS2::SolidLine},
+    };
+    RS_LayerList* lista = graphic->getLayerList();
+    for (const Capa& c : capas) {
+        if (lista->find(c.nombre) != nullptr) continue;
+        auto capa = new RS_Layer(c.nombre);
+        capa->setPen(RS_Pen(RS_Color(c.r, c.g, c.b), c.ancho, c.tipo));
+        graphic->addLayer(capa);
+    }
+    if (RS_Layer* muros = lista->find("A-MUROS")) lista->activate(muros, true);
+    graphic->setModified(false);
+}
+
 static void edwinCapasCorte(RS_Graphic* graphic) {
     if (graphic == nullptr) return;
+    if (edwin::esDuctusArq()) {
+        ductusArqDibujoNuevo(graphic);
+        return;
+    }
     struct Capa { const char* nombre; int r, g, b; RS2::LineType tipo; };
     const Capa capas[] = {
         {"CORTE", 255, 0, 0, RS2::SolidLine},
