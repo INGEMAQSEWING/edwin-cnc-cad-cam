@@ -49,6 +49,9 @@
 #include "edwin_variante.h"
 
 #include <QToolButton>
+#include <QTreeWidget>
+#include <QHeaderView>
+#include <QTimer>
 
 namespace {
     // only enable the penpallet by settings
@@ -254,6 +257,25 @@ LC_WidgetFactory::LC_WidgetFactory(QC_ApplicationWindow* main_win,
 }
 
 
+// DuctusArq 2D: menú de ventas y mercadeo (plano de ventas a color y render 3D). Lo usan el
+// botón «Ventas» de la barra Arquitectura y el botón flotante.
+static QMenu* ductusArqMenuVentas(QWidget* padre)
+{
+    auto menu = new QMenu(padre);
+    auto plano = menu->addAction(QString::fromUtf8("Plano de ventas 2D a color  (PV)"));
+    plano->setToolTip(QString::fromUtf8("Lámina a color para folletos y redes: PDF, PNG, Instagram e historias"));
+    QObject::connect(plano, &QAction::triggered, []() {
+        QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Plano de ventas"));
+    });
+    auto render = menu->addAction(QString::fromUtf8("Render 3D de la planta amoblada  (REN)"));
+    render->setToolTip(QString::fromUtf8("Dos fotos con Blender: desde arriba y en perspectiva"));
+    QObject::connect(render, &QAction::triggered, []() {
+        QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Render de la planta"));
+    });
+    menu->setToolTipsVisible(true);
+    return menu;
+}
+
 void LC_WidgetFactory::createLeftSidebar(int columns, int icon_size)
 {
     LC_DockWidget* dock_line = new LC_DockWidget(main_window);
@@ -417,6 +439,119 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
         main_window->tabifyDockWidget(dock_pen_palette, dock_layer_tree);
     }
     main_window->addDockWidget(Qt::RightDockWidgetArea, dock_command);
+
+    if (edwin::esDuctusArq()) {
+        // Lista de comandos siempre a la vista, arriba de la línea de comandos: doble clic (o
+        // Enter) ejecuta el comando, igual que escribirlo.
+        auto dock_lista = new QDockWidget(QString::fromUtf8("Comandos DuctusArq"), main_window);
+        dock_lista->setObjectName("ductusarq_comandos_dockwidget");
+        auto lista = new QTreeWidget(dock_lista);
+        lista->setColumnCount(2);
+        lista->setHeaderLabels({QString::fromUtf8("Comando"), QString::fromUtf8("Qué hace (doble clic)")});
+        lista->setRootIsDecorated(false);
+        lista->setUniformRowHeights(true);
+        lista->setAlternatingRowColors(true);
+        lista->setFocusPolicy(Qt::NoFocus);
+        lista->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        lista->header()->setStretchLastSection(true);
+        struct Fila { const char* comando; const char* texto; };
+        const Fila filas[] = {
+            {"", "ARQUITECTURA"},
+            {"MEDIDAS", "Metros o pies y escala"},
+            {"CASA", "Casa rápida por medidas"},
+            {"EJ", "Ejes con burbujas"},
+            {"COL", "Columnas en los ejes"},
+            {"MU", "Muro por puntos"},
+            {"PUE", "Puerta en el muro"},
+            {"VEN", "Ventana en el muro"},
+            {"ESP", "Área de un espacio (clic adentro)"},
+            {"CA", "Cuadro de áreas"},
+            {"CV", "Cuadro de puertas y ventanas"},
+            {"MOB", "Mobiliario"},
+            {"ELEC", "Electrodomésticos"},
+            {"SAN", "Sanitarios"},
+            {"POR", "Pórtico"},
+            {"CIM", "Cimentación"},
+            {"ROT", "Rótulo / cajetín"},
+            {"", "VENTAS Y MERCADEO"},
+            {"PV", "Plano de ventas a color"},
+            {"REN", "Render 3D de la planta"},
+            {"", "DIBUJO"},
+            {"L", "Línea"},
+            {"PL", "Polilínea"},
+            {"REC", "Rectángulo"},
+            {"C", "Círculo"},
+            {"A", "Arco"},
+            {"T", "Texto"},
+            {"SB", "Sombreado"},
+            {"", "MODIFICAR"},
+            {"B", "Borrar"},
+            {"CO", "Copiar"},
+            {"D", "Desplazar (mover)"},
+            {"GI", "Girar"},
+            {"SI", "Simetría"},
+            {"E", "Equidistancia"},
+            {"RR", "Recortar"},
+            {"ES", "Escala"},
+            {"EM", "Empalme"},
+            {"", "VER Y CONSULTAR"},
+            {"ZE", "Zoom a todo el dibujo"},
+            {"Z", "Zoom ventana"},
+            {"DI", "Distancia"},
+            {"AA", "Área"},
+            {"H", "Deshacer"},
+        };
+        for (const auto& f : filas) {
+            auto item = new QTreeWidgetItem(lista);
+            if (*f.comando == 0) {
+                item->setText(0, QString::fromUtf8(f.texto));
+                item->setFirstColumnSpanned(true);
+                QFont negrita = item->font(0);
+                negrita.setBold(true);
+                item->setFont(0, negrita);
+                item->setFlags(Qt::ItemIsEnabled);
+                continue;
+            }
+            item->setText(0, QString::fromUtf8(f.comando));
+            item->setText(1, QString::fromUtf8(f.texto));
+            item->setData(0, Qt::UserRole, QString::fromUtf8(f.comando).toLower());
+            item->setToolTip(1, QString::fromUtf8("Escriba %1 y Enter, o doble clic aquí").arg(QString::fromUtf8(f.comando)));
+        }
+        QObject::connect(lista, &QTreeWidget::itemActivated, [action_handler](QTreeWidgetItem* item, int) {
+            const QString cmd = item->data(0, Qt::UserRole).toString();
+            if (!cmd.isEmpty() && action_handler) action_handler->command(cmd);
+        });
+        dock_lista->setWidget(lista);
+        main_window->addDockWidget(Qt::RightDockWidgetArea, dock_lista);
+        main_window->splitDockWidget(dock_lista, dock_command, Qt::Vertical);
+
+        // Botón flotante «VENTAS»: despliega Plano de ventas 2D y Render 3D. Se puede mover a
+        // cualquier lugar o acoplar a un lado.
+        auto dock_ventas = new QDockWidget(QString::fromUtf8("Ventas"), main_window);
+        dock_ventas->setObjectName("ductusarq_ventas_dockwidget");
+        auto boton = new QToolButton(dock_ventas);
+        boton->setText(QString::fromUtf8("VENTAS  \u25BE"));
+        boton->setToolTip(QString::fromUtf8("Plano de ventas a color y render 3D para el equipo de ventas y mercadeo"));
+        boton->setPopupMode(QToolButton::InstantPopup);
+        boton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        boton->setMenu(ductusArqMenuVentas(boton));
+        boton->setMinimumSize(150, 44);
+        boton->setStyleSheet("QToolButton { font-weight: bold; font-size: 15px; color: white; background: #0b6e8a;"
+                             " border: 1px solid #08506a; border-radius: 6px; padding: 6px 14px; }"
+                             "QToolButton:hover { background: #0e86a8; }"
+                             "QToolButton::menu-indicator { image: none; }");
+        dock_ventas->setWidget(boton);
+        main_window->addDockWidget(Qt::RightDockWidgetArea, dock_ventas);
+        dock_ventas->setFloating(true);
+        dock_ventas->resize(170, 80);
+        QMainWindow* ventana = main_window;
+        QTimer::singleShot(1500, dock_ventas, [dock_ventas, ventana]() {
+            if (!dock_ventas->isFloating()) return;
+            const QRect g = ventana->geometry();
+            dock_ventas->move(g.right() - 560, g.top() + 150);
+            dock_ventas->show();
+        });
+    }
     command_widget->getDockingAction()->setText(dock_command->isFloating() ? tr("Dock") : tr("Float"));
 }
 
@@ -754,7 +889,6 @@ void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
             {"Mobiliario", "Anexar mobiliario", "MOB"},
             {"Electrodomésticos", "Anexar electrodomésticos", "ELEC · APP"},
             {"Sanitarios", "Anexar aparatos sanitarios", "SAN"},
-            {"Render 3D", "Render de la planta", "RENDER · REN"},
             {"Pórtico", "Pórtico", "PORTICO · POR"},
             {"Cimentación", "Cimentación", "CIMENTACION · CIM"},
             {"Rótulo", "Rótulo", "ROTULO · ROT"},
@@ -769,6 +903,16 @@ void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
             });
             arq->addAction(a);
         }
+        // «Ventas ▾» (después de Sanitarios): plano de ventas a color y render 3D.
+        auto ventas = new QToolButton(arq);
+        ventas->setText(QString::fromUtf8("Ventas \u25BE"));
+        ventas->setToolTip(QString::fromUtf8("Plano de ventas a color (PV) y render 3D (REN)"));
+        ventas->setPopupMode(QToolButton::InstantPopup);
+        ventas->setMenu(ductusArqMenuVentas(ventas));
+        QFont negrita = ventas->font();
+        negrita.setBold(true);
+        ventas->setFont(negrita);
+        arq->insertWidget(arq->actions().value(11), ventas);
         main_window->addToolBar(Qt::TopToolBarArea, arq);
     }
 }

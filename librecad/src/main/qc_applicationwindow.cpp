@@ -815,6 +815,9 @@ void QC_ApplicationWindow::fitDockLayout()
             // CAD2CAM / DuctusArq se manejan escribiendo comandos (estilo AutoCAD): la línea de
             // comandos es lo último que se esconde en pantallas bajas (laptops de 768 px).
             if (edwin::esCad2cam() && names.contains(QStringLiteral("command_dockwidget"))) rank = 9;
+            // DuctusArq: la lista de comandos va justo antes de la línea de comandos.
+            if (edwin::esDuctusArq() && names.contains(QStringLiteral("ductusarq_comandos_dockwidget")))
+                rank = names.contains(QStringLiteral("command_dockwidget")) ? 9 : 8;
             if (rank < priority) { candidate = dock; priority = rank; }
         }
         if (!candidate) {

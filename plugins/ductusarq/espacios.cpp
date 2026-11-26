@@ -16,6 +16,7 @@
 
 #include "ductusarq.h"
 #include "comun.h"
+#include "ventas.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -263,7 +264,7 @@ void DuctusArq::puertaVentana(Document_Interface *doc, QWidget *parent)
     da::texto(doc, QPointF(0, 0), s.marca, m, un.papel(2.5));
     dato(doc, QPointF(s.marca.x, s.marca.y - r * 1.6),
          u("DUCTUS-VANO|%1|%2|%3|%4|%5|%6|%7").arg(m, tipoTxt).arg(vAncho, 0, 'f', 4).arg(vAlto, 0, 'f', 4)
-             .arg(esVentana ? vAnte : 0.0, 0, 'f', 4).arg(aprobTxt, QString::fromStdString(arq::esquinasVano(v))), un);
+             .arg(esVentana ? vAnte : 0.0, 0, 'f', 4).arg(aprobTxt, QString::fromStdString(arq::esquinasVano(v) + "|" + arq::datoLadoVano(v))), un);
     doc->setLayer(capaAntes);
     doc->updateView();
 }
@@ -457,3 +458,56 @@ void DuctusArq::cuadroAreas(Document_Interface *doc, QWidget *parent)
         QMessageBox::information(parent, u("Cuadro de áreas: revisar"), avisos.join("\n\n"));
     doc->updateView();
 }
+
+// ---------------------------------------------------------------------------
+// Espacios con su forma (para el plano de ventas y el render): la forma se recalcula con los
+// muros actuales desde el punto donde se hizo clic, así sigue bien aunque se muevan muros.
+// Solo se usan las líneas de muros (y los muros guardados): los muebles no cierran espacios.
+namespace da {
+std::vector<arq::EspacioVentas> espaciosConForma(Document_Interface *doc, const arq::Unidades &un)
+{
+    std::vector<arq::EspacioVentas> r;
+    struct Etiqueta { QString texto; QPointF punto; };
+    std::vector<Etiqueta> datos;
+    {
+        QList<Plug_Entity *> todas;
+        doc->getAllEntities(&todas, false);
+        for (Plug_Entity *e : todas) {
+            QHash<int, QVariant> d;
+            e->getData(&d);
+            const int tipo = d.value(DPI::ETYPE).toInt();
+            if (tipo == DPI::TEXT || tipo == DPI::MTEXT) {
+                const QString t = d.value(DPI::TEXTCONTENT).toString();
+                if (t.startsWith(u("DUCTUS-ESPACIO|")))
+                    datos.push_back({t, QPointF(d.value(DPI::STARTX).toDouble(), d.value(DPI::STARTY).toDouble())});
+            }
+            delete e;
+        }
+    }
+    if (datos.empty()) return r;
+    std::vector<EntidadMuro> lineas = leerLineas(doc, true);
+    std::vector<arq::Seg> segs = todosLosSegmentos(lineas);
+    soltar(lineas);
+    for (const QString &x : leerDatos(doc, "DUCTUS-MURO|")) {
+        std::vector<arq::P> pol;
+        if (!arq::leerDatoMuro(x.toStdString(), pol)) continue;
+        for (size_t i = 0; i < pol.size(); ++i) segs.push_back({pol[i], pol[(i + 1) % pol.size()]});
+    }
+    for (const QString &x : leerDatos(doc, "DUCTUS-VANO|")) arq::cierreVano(x.toStdString(), segs);
+    const double tol = un.metros(0.001);
+    for (const Etiqueta &et : datos) {
+        arq::DatoEspacio de;
+        if (!arq::leerDatoEspacio(et.texto.toStdString(), de) || de.clase != "espacio") continue;
+        // El dato se escribe 6 mm (de papel) debajo del punto del clic.
+        const arq::P clic(et.punto.x(), et.punto.y() + un.papel(6));
+        arq::EspacioVentas ev;
+        ev.nombre = de.nombre;
+        ev.etiqueta = clic;
+        ev.area = de.area;
+        const arq::AreaEspacio a = arq::areaPorPunto(segs, clic, un.metros(200), tol);
+        if (a.cerrado) ev.celdas = a.celdas;
+        r.push_back(ev);
+    }
+    return r;
+}
+} // namespace da

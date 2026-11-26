@@ -2,6 +2,7 @@
 //   py -3.10 -m ziglang c++ -std=c++17 pruebas_arq.cpp -o pruebas_arq.exe && pruebas_arq.exe
 #include "arq.h"
 #include "muebles.h"
+#include "ventas.h"
 
 #include <cstdio>
 
@@ -332,6 +333,44 @@ int main() {
         ok(datoMueble(*buscarPieza("nevera"), P(1, 2), 0, 0.7, 0.7, 1.75).rfind("DUCTUS-MUEBLE|nevera|1.0", 0) == 0, "dato de mueble");
     }
 
+
+    // ---- Plano de ventas ----
+    ok(pisoPorNombre("BA\xC3\x91O Y ROPAS") == TipoPiso::Bano, "ventas: baño");
+    ok(pisoPorNombre("MASTER BATH") == TipoPiso::Bano, "ventas: bath");
+    ok(pisoPorNombre("WALK-IN CLOSET") == TipoPiso::Closet, "ventas: closet antes que otros");
+    ok(pisoPorNombre("COCINA - COMEDOR") == TipoPiso::Cocina, "ventas: cocina");
+    ok(pisoPorNombre("OPEN TO BELOW") == TipoPiso::Vacio, "ventas: vacío");
+    ok(pisoPorNombre("ALCOBA PRINCIPAL") == TipoPiso::Calido, "ventas: alcoba");
+    ok(medidasEspacio(180, 168, Sistema::Imperial) == "15'-0\" X 14'-0\"", "ventas: medidas en pies");
+    ok(medidasEspacio(3.4, 3.3, Sistema::Metrico) == "3.40 x 3.30 m", "ventas: medidas en metros");
+    {
+        Vano v; v.tipo = TipoVano::Batiente; v.o = P(1, 0); v.dir = P(1, 0); v.n = P(0, 1); v.ancho = 0.9; v.espesor = 0.15;
+        v.lado = -1; v.bisagraInicio = false;
+        const std::string d = "DUCTUS-VANO|P-1|" + std::string(nombreTipoVano(v.tipo)) + "|0.9|2.1|0||" + esquinasVano(v) + "|" + datoLadoVano(v);
+        Vano r;
+        ok(vanoDeDato(d, r) && r.tipo == TipoVano::Batiente && std::fabs(r.ancho - 0.9) < 1e-6 && std::fabs(r.espesor - 0.15) < 1e-6
+           && r.lado == -1 && !r.bisagraInicio && std::fabs(r.n.y - 1) < 1e-9, "ventas: vano desde su dato");
+        Vano viejo;  // datos de antes (sin lado ni bisagra)
+        ok(vanoDeDato("DUCTUS-VANO|P-1|" + std::string(nombreTipoVano(v.tipo)) + "|0.9|2.1|0||" + esquinasVano(v), viejo)
+           && viejo.lado == 1 && viejo.bisagraInicio, "ventas: vano viejo");
+        DatoVano dv;
+        ok(leerDatoVano(d, dv) && dv.marca == "P-1", "ventas: el cuadro de vanos sigue leyendo el dato nuevo");
+        std::vector<Seg> cierre;
+        ok(cierreVano(d, cierre) && cierre.size() == 2, "ventas: el área sigue cerrando con el dato nuevo");
+    }
+    {
+        // Cuarto de 4 x 3 con una cama en el centro: el nombre no cae sobre la cama.
+        EspacioVentas e{"ALCOBA", P(2, 1.5), {rect(0, 0, 4, 3)}, 12};
+        std::vector<Rect> cama{rect(1.5, 0.8, 2.5, 2.2)};
+        const P q = lugarLibre(e, 1.2, 0.4, cama);
+        const Rect t{q.x - 0.6, q.y - 0.2, q.x + 0.6, q.y + 0.2};
+        ok(solape(t, cama[0]) == 0 && q.x >= 0 && q.x <= 4, "ventas: nombre en lugar libre");
+        std::vector<std::vector<P>> muros{esquinas(rect(-0.1, -0.1, 4.1, 0)), esquinas(rect(-0.1, 3, 4.1, 3.1)),
+                                          esquinas(rect(-0.1, 0, 0, 3)), esquinas(rect(4, 0, 4.1, 3))};
+        OpcionesVentas op;
+        const Lamina L = planoVentas(muros, {}, {e}, {}, op, Sistema::Metrico);
+        ok(!L.vacia() && L.textos.size() == 2 && L.textos[1].texto == "4.00 x 3.00 m", "ventas: lámina con nombre y medidas");
+    }
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;
 }

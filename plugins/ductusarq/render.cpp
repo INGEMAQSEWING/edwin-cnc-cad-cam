@@ -17,6 +17,7 @@
 #include "ductusarq.h"
 #include "comun.h"
 #include "muebles.h"
+#include "ventas.h"
 
 #include <QComboBox>
 #include <QCoreApplication>
@@ -40,6 +41,10 @@
 #include <QVBoxLayout>
 
 using da::u;
+
+namespace da {
+std::vector<arq::EspacioVentas> espaciosConForma(Document_Interface *doc, const arq::Unidades &un);  // espacios.cpp
+}
 
 namespace {
 
@@ -187,6 +192,20 @@ void DuctusArq::renderPlanta(Document_Interface *doc, QWidget *parent)
     raiz["muros"] = muros;
     raiz["vanos"] = vanos;
     raiz["muebles"] = muebles;
+    // Espacios con su forma: el piso de cada uno sale según su nombre (madera, cerámica ...).
+    QJsonArray espacios;
+    static const char *tipos[] = {"calido", "bano", "cocina", "closet", "exterior", "vacio"};
+    for (const arq::EspacioVentas &e : da::espaciosConForma(doc, un)) {
+        if (e.celdas.empty()) continue;
+        QJsonObject o;
+        o["nombre"] = QString::fromStdString(e.nombre);
+        o["tipo"] = u(tipos[static_cast<int>(arq::pisoPorNombre(e.nombre))]);
+        QJsonArray celdas;
+        for (const arq::Rect &r : e.celdas) celdas.append(QJsonArray{r.x1, r.y1, r.x2, r.y2});
+        o["celdas"] = celdas;
+        espacios.append(o);
+    }
+    raiz["espacios"] = espacios;
     const QString plano = carpeta + u("/plano.json");
     QFile fj(plano);
     if (!fj.open(QIODevice::WriteOnly)) {

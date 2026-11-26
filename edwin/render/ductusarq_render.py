@@ -115,6 +115,66 @@ M = {
 }
 
 
+def material_baldosa(nombre, color, junta, lado=0.60, rugosidad=0.25):
+    """Porcelanato o cerámica en cuadros de «lado» metros con junta fina."""
+    m = bpy.data.materials.get(nombre)
+    if m:
+        return m
+    m = bpy.data.materials.new(nombre)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    b.inputs["Roughness"].default_value = rugosidad
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    ladrillo = nt.nodes.new("ShaderNodeTexBrick")
+    ladrillo.offset = 0.0
+    ladrillo.inputs["Scale"].default_value = 1.0
+    ladrillo.inputs["Mortar Size"].default_value = 0.003
+    ladrillo.inputs["Brick Width"].default_value = lado
+    ladrillo.inputs["Row Height"].default_value = lado
+    ladrillo.inputs["Color1"].default_value = (*color, 1)
+    ladrillo.inputs["Color2"].default_value = (*[c * 0.97 for c in color], 1)
+    ladrillo.inputs["Mortar"].default_value = (*junta, 1)
+    nt.links.new(coord.outputs["Object"], ladrillo.inputs["Vector"])
+    nt.links.new(ladrillo.outputs["Color"], b.inputs["Base Color"])
+    return m
+
+
+def material_tapete(nombre, claro, oscuro):
+    """Tapete de tela con un tejido suave."""
+    m = bpy.data.materials.get(nombre)
+    if m:
+        return m
+    m = bpy.data.materials.new(nombre)
+    m.use_nodes = True
+    nt = m.node_tree
+    b = nt.nodes.get("Principled BSDF")
+    b.inputs["Roughness"].default_value = 0.95
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    ruido = nt.nodes.new("ShaderNodeTexNoise")
+    ruido.inputs["Scale"].default_value = 18.0
+    ruido.inputs["Detail"].default_value = 6.0
+    nt.links.new(coord.outputs["Object"], ruido.inputs["Vector"])
+    rampa = nt.nodes.new("ShaderNodeValToRGB")
+    rampa.color_ramp.elements[0].color = (*oscuro, 1)
+    rampa.color_ramp.elements[1].color = (*claro, 1)
+    nt.links.new(ruido.outputs["Fac"], rampa.inputs["Fac"])
+    nt.links.new(rampa.outputs["Color"], b.inputs["Base Color"])
+    return m
+
+
+PISOS = {
+    "bano": material_baldosa("Cerámica baño", (0.58, 0.62, 0.65), (0.42, 0.45, 0.48), 0.45),
+    "cocina": material_baldosa("Porcelanato cocina", (0.70, 0.67, 0.62), (0.52, 0.50, 0.46), 0.60),
+    "exterior": material_baldosa("Piedra terraza", (0.72, 0.70, 0.66), (0.55, 0.53, 0.50), 0.50, 0.7),
+    "vacio": material("Doble altura", (0.86, 0.86, 0.85), 0.8),
+}
+TAPETES = [material_tapete("Tapete crema", (0.70, 0.62, 0.50), (0.60, 0.52, 0.41)),
+           material_tapete("Tapete gris", (0.62, 0.62, 0.62), (0.50, 0.50, 0.51))]
+MATERA = material("Matera", (0.80, 0.78, 0.74), 0.6)
+HOJAS = [material("Hojas", (0.16, 0.36, 0.14), 0.7), material("Hojas claras", (0.26, 0.46, 0.20), 0.7)]
+
+
 # --------------------------------------------------------------------------- geometría
 def prisma(nombre, puntos, z0, z1, mat):
     """Prisma de un polígono (lista de (x, y) en metros) entre las alturas z0 y z1."""
@@ -353,6 +413,86 @@ for p in datos.get("muebles", []):
     mueble(p)
 for o in vidrios:
     pass
+
+# --------------------------------------------------------------------------- pisos, tapetes y plantas
+# Piso de cada espacio según su nombre (lo manda DuctusArq): madera en alcobas y sala,
+# cerámica en baños, porcelanato en cocinas, piedra en terrazas.
+ESPACIOS = datos.get("espacios", [])
+for i, e in enumerate(ESPACIOS):
+    mat = PISOS.get(e.get("tipo"))
+    if not mat:
+        continue
+    for j, (a, b, c, d) in enumerate(e.get("celdas", [])):
+        caja(f"PisoEsp{i}_{j}", (a + c) / 2 * K, (b + d) / 2 * K, (c - a) * K + 0.002, (d - b) * K + 0.002,
+             0.0, 0.004, mat)
+
+# Cajas de los muebles (en metros, sin girar) para no encimar plantas.
+def caja_mueble(p):
+    w, f = float(p["ancho"]) * K, float(p["fondo"]) * K
+    if round(float(p.get("grados", 0))) % 180 == 90:
+        w, f = f, w
+    x, y = float(p["x"]) * K, float(p["y"]) * K
+    return (x - w / 2, y - f / 2, x + w / 2, y + f / 2)
+
+
+CAJAS_MUEBLES = [caja_mueble(p) for p in datos.get("muebles", [])]
+
+# Tapetes debajo de sofás y camas (giran con el mueble).
+for i, p in enumerate(datos.get("muebles", [])):
+    pid = p["id"]
+    w, f = float(p["ancho"]) * K, float(p["fondo"]) * K
+    if pid.startswith("sofa"):
+        tw, tf, adelante = w + 0.50, 2.00, -0.75   # se extiende hacia el frente del sofá
+        mat = TAPETES[1]
+    elif pid.startswith("cama"):
+        tw, tf, adelante = w + 0.90, f * 0.70 + 0.30, -(f * 0.20 + 0.15)  # hacia los pies de la cama
+        mat = TAPETES[0]
+    else:
+        continue
+    raiz = bpy.data.objects.new(f"Tapete{i}", None)
+    escena.collection.objects.link(raiz)
+    raiz.location = (float(p["x"]) * K, float(p["y"]) * K, 0)
+    raiz.rotation_euler.z = math.radians(float(p.get("grados", 0)))
+    caja(f"TapeteTela{i}", 0, adelante, tw, tf, 0.004, 0.008, mat, raiz)
+
+
+def planta(nombre, x, y, alto=1.05):
+    cilindro(nombre + "Matera", x, y, 0.17, 0.0, 0.34, MATERA)
+    for k, (dx, dy, z, r) in enumerate([(0, 0, 0.62, 0.26), (0.10, 0.06, 0.82, 0.20), (-0.08, 0.07, 0.90, 0.17),
+                                         (0.02, -0.10, 0.98, 0.15)]):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=r, location=(x + dx, y + dy, z * alto / 1.05))
+        hoja = bpy.context.active_object
+        hoja.name = f"{nombre}Hoja{k}"
+        hoja.scale.z = 0.8
+        hoja.data.materials.append(HOJAS[k % 2])
+
+
+# Una planta en una esquina libre de cada sala, estudio y alcoba (sin tapar muebles ni puertas).
+CENTROS_PUERTAS = []
+for v in datos.get("vanos", []):
+    if "VENTANA" in v.get("tipo", ""):
+        continue
+    es = v["esquinas"]
+    CENTROS_PUERTAS.append((sum(q[0] for q in es) / 4 * K, sum(q[1] for q in es) / 4 * K))
+for i, e in enumerate(ESPACIOS):
+    if e.get("tipo") != "calido" or not e.get("celdas"):
+        continue
+    celdas = [(a * K, b * K, c * K, d * K) for a, b, c, d in e["celdas"]]
+    ex0, ey0 = min(c[0] for c in celdas), min(c[1] for c in celdas)
+    ex1, ey1 = max(c[2] for c in celdas), max(c[3] for c in celdas)
+    if (ex1 - ex0) * (ey1 - ey0) < 7.0:
+        continue
+    r = 0.30
+    for px, py in [(ex1 - r, ey1 - r), (ex0 + r, ey1 - r), (ex1 - r, ey0 + r), (ex0 + r, ey0 + r)]:
+        if not any(c[0] <= px <= c[2] and c[1] <= py <= c[3] for c in celdas):
+            continue
+        if any(a - 0.05 < px + r and px - r < c + 0.05 and b - 0.05 < py + r and py - r < d + 0.05
+               for a, b, c, d in CAJAS_MUEBLES):
+            continue
+        if any(math.hypot(px - qx, py - qy) < 1.20 for qx, qy in CENTROS_PUERTAS):
+            continue
+        planta(f"Planta{i}", px, py)
+        break
 
 # --------------------------------------------------------------------------- luz y cámaras
 mundo = bpy.data.worlds.new("Mundo")

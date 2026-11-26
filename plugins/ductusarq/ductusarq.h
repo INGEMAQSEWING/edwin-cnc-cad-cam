@@ -47,6 +47,8 @@ private:
     void anexarMueble(Document_Interface *doc, QWidget *parent, int grupo);
     // render.cpp
     void renderPlanta(Document_Interface *doc, QWidget *parent);
+    // ventas.cpp
+    void planoVentas(Document_Interface *doc, QWidget *parent);
     // rotulo.cpp
     void rotulo(Document_Interface *doc, QWidget *parent);
     // ductusarq.cpp

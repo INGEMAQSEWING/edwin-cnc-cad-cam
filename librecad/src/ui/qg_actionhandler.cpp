@@ -1402,6 +1402,7 @@ bool QG_ActionHandler::command(const QString& cmd)
                     {"Anexar electrodomésticos", "elec app appliance appliances electrodomesticos"},
                     {"Anexar aparatos sanitarios", "san sanitario sanitarios"},
                     {"Render de la planta", "ren render"},
+                    {"Plano de ventas", "pv ventas planoventas"},
                     {"Pórtico", "por portico pórtico"},
                     {"Cimentación", "cim cimentacion cimentación zapata zapatas"},
                     {"Rótulo", "rot rotulo rótulo cajetin cajetín"},
