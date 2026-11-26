@@ -283,7 +283,7 @@ def tutorial(miami):
         p.insert_text(pymupdf.Point(40, 112), "Cómo hacer un plano", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 146), "para licencia en Colombia", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 180), "Curaduría urbana · Res. 462/2017 y 1025/2021 · metros", fontsize=11, color=(0.85, 0.9, 1))
-    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.19 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
+    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.21 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
     doc.y = 256
     doc.parrafo("La muestra que vamos a dibujar", fs=13, negrita=True, color=AZUL)
     ref = os.path.join(REF, "ventas.jpeg" if miami else "planta.jpeg")
@@ -417,8 +417,32 @@ def tutorial(miami):
                    "Clic en la esquina de abajo a la izquierda de la hoja y mueva su planta dentro del marco."], fs=9)
     hoja_completa(p, pymupdf.Rect(40, doc.y, doc.W - 40, doc.H - 50), figs, d, miami, valores)
 
-    # ---------------------------------------------------------------- Paso 7
-    p = doc.pagina("7. Imprimir y radicar")
+    # ---------------------------------------------------------------- Paso 7: amoblar y render
+    p = doc.pagina("7. Amoblar y render para ventas")
+    doc.comando("MOB", "Anexar mobiliario   (ELEC o APP: electrodomésticos · SAN: sanitarios)")
+    doc.pasos(["Escoja la pieza de la lista (" + ("king, queen, full o twin; sofá, comedor, closet..." if miami else
+               "cama sencilla, doble, queen o king; sofá, comedor, closet...") + "). La medida sale sola "
+               + ("en pulgadas (tallas de EE. UU.)" if miami else "en metros (tallas de Colombia)") + " y se puede cambiar.",
+               "Escoja el giro (0°, 90°, 180° o 270°) y haga clic donde va el CENTRO de la pieza; puede poner varias seguidas.",
+               "Cada pieza guarda su altura (nevera 1.75 m, cama 0.55 m...) para el render."], fs=9)
+    doc.comando("REN", "Render de la planta amoblada (3D con Blender, gratis)")
+    doc.pasos(["Escoja la calidad (rápida, normal para redes o alta para imprimir) y el alto de los muros.",
+               "Blender trabaja sin abrirse y en 1 a 5 minutos deja dos fotos en Documentos\\DuctusArq\\Render: "
+               "desde arriba (para ventas) y en 3D (para redes sociales).",
+               "Solo se levantan los muros hechos con «Casa rápida» o «Muro»; los huecos de puertas y ventanas salen solos."], fs=9)
+    carpeta_r = os.path.join(GEN, "render_miami" if miami else "render_colombia")
+    alto_img = (doc.H - doc.y - 80) / 2
+    r1 = pymupdf.Rect(40, doc.y, doc.W / 2 - 6, doc.y + alto_img * 2)
+    r2 = pymupdf.Rect(doc.W / 2 + 6, doc.y, doc.W - 40, doc.y + alto_img * 2)
+    p.insert_image(r1, filename=os.path.join(carpeta_r, "planta_superior.png"), keep_proportion=True)
+    p.insert_image(r2, filename=os.path.join(carpeta_r, "planta_3d.png"), keep_proportion=True)
+    doc.y += alto_img * 2 + 6
+    doc.parrafo("Izquierda: planta amoblada desde arriba (los muros se cortan a 1.30 m para que se vean los huecos de "
+                "las puertas). Derecha: la misma planta en 3D. Fotos sacadas por DuctusArq 2D con este mismo ejemplo.",
+                fs=8, color=GRIS)
+
+    # ---------------------------------------------------------------- Paso 8
+    p = doc.pagina("8. Imprimir y radicar")
     doc.pasos(["Archivo > Vista previa de impresión: revise que la escala sea la del rótulo (" + d["ESCALA"] + ").",
                "Archivo > Exportar como PDF" + (": en Miami cada hoja va en un PDF aparte, con nombre en MAYÚSCULAS "
                                                 "(A-102.PDF), vectorial y sin capas." if miami else

@@ -174,6 +174,46 @@ inline void cadenaY(Document_Interface *doc, const QPointF &base, const std::vec
 }
 
 // ---------------------------------------------------------------------------
+// Datos guardados en el dibujo (textos DUCTUS-... en la capa A-DATOS, que no se imprime).
+inline QStringList leerDatos(Document_Interface *doc, const QString &prefijo) {
+    QStringList r;
+    QList<Plug_Entity *> todas;
+    doc->getAllEntities(&todas, false);
+    for (Plug_Entity *e : todas) {
+        QHash<int, QVariant> d;
+        e->getData(&d);
+        const int tipo = d.value(DPI::ETYPE).toInt();
+        if (tipo == DPI::TEXT || tipo == DPI::MTEXT) {
+            const QString t = d.value(DPI::TEXTCONTENT).toString();
+            if (t.startsWith(prefijo)) r << t;
+        }
+        delete e;
+    }
+    return r;
+}
+
+inline void dato(Document_Interface *doc, const QPointF &pos, const QString &t, const arq::Unidades &un) {
+    const QString antes = doc->getCurrentLayer();
+    const bool existe = doc->getAllLayer().contains("A-DATOS", Qt::CaseInsensitive);
+    doc->setLayer("A-DATOS");
+    if (!existe) doc->setCurrentLayerProperties(0xC8C8C8, DPI::Width00, DPI::SolidLine);
+    QPointF p = pos;
+    doc->addText(t, "standard", &p, un.papel(0.6), 0, DPI::HAlignLeft, DPI::VAlignBottom);
+    doc->setLayer(antes);
+}
+
+// Guarda los muros (polígonos en coordenadas del dibujo) para el render 3D.
+inline void datosMuros(Document_Interface *doc, const QPointF &base, const std::vector<std::vector<arq::P>> &polis,
+                       const arq::Unidades &un) {
+    for (const auto &pol : polis) {
+        if (pol.size() < 3) continue;
+        std::vector<arq::P> mundo;
+        for (const arq::P &p : pol) mundo.emplace_back(base.x() + p.x, base.y() + p.y);
+        dato(doc, QPointF(mundo[0].x, mundo[0].y), QString::fromStdString(arq::datoMuro(mundo)), un);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Casillas de las ventanas
 // Casilla de una medida; recuerda lo escrito la última vez (clave en QSettings).
 inline QLineEdit *campo(QFormLayout *f, const QString &etiqueta, const QString &clave, const QString &porDefecto,

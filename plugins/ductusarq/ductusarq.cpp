@@ -43,6 +43,7 @@ const char *CMD_CUADRO_AREAS = "Cuadro de áreas e índices";
 const char *CMD_MOBILIARIO = "Anexar mobiliario...";
 const char *CMD_ELECTRO = "Anexar electrodomésticos (appliances)...";
 const char *CMD_SANITARIOS = "Anexar aparatos sanitarios...";
+const char *CMD_RENDER = "Render de la planta amoblada (3D con Blender)...";
 const char *CMD_TUT_CO = "Tutorial: plano para Colombia (PDF)";
 const char *CMD_TUT_MIA = "Tutorial: plano para Miami (PDF)";
 const char *CMD_ROTULO = "Rótulo / cajetín por especialidad...";
@@ -80,7 +81,7 @@ PluginCapabilities DuctusArq::getCapabilities() const
     PluginCapabilities pc;
     if (!esDuctusArq()) return pc;  // en EDWIN CNC CAD-CAM / CAD2CAM no se muestra
     for (const char *c : {CMD_CASA, CMD_EJES, CMD_COLUMNAS, CMD_MURO, CMD_VANO, CMD_ESPACIO, CMD_CUADRO_VANOS,
-                          CMD_CUADRO_AREAS, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_PORTICO,
+                          CMD_CUADRO_AREAS, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_RENDER, CMD_PORTICO,
                           CMD_CIMENTACION, CMD_ROTULO, CMD_MEDIDAS, CMD_CAPAS, CMD_TUT_CO, CMD_TUT_MIA,
                           CMD_COMANDOS, CMD_ACERCA})
         pc.menuEntryPoints << PluginMenuLocation(MENU, u(c));
@@ -102,6 +103,7 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
     else if (cmd == u(CMD_MOBILIARIO)) anexarMueble(doc, parent, 0);
     else if (cmd == u(CMD_ELECTRO)) anexarMueble(doc, parent, 1);
     else if (cmd == u(CMD_SANITARIOS)) anexarMueble(doc, parent, 2);
+    else if (cmd == u(CMD_RENDER)) renderPlanta(doc, parent);
     else if (cmd == u(CMD_TUT_CO) || cmd == u(CMD_TUT_MIA)) {
         // Los tutoriales se instalan junto al programa, en la carpeta «tutoriales».
         const QString archivo = QCoreApplication::applicationDirPath() + u("/tutoriales/")
@@ -136,6 +138,7 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
             "<tr><td>Anexar mobiliario</td><td>MOB · MUEBLE</td></tr>"
             "<tr><td>Anexar electrodomésticos</td><td>ELEC · APP · APPLIANCE</td></tr>"
             "<tr><td>Anexar aparatos sanitarios</td><td>SAN · SANITARIO</td></tr>"
+            "<tr><td>Render 3D de la planta amoblada</td><td>REN · RENDER</td></tr>"
             "<tr><td>Pórtico (alzado)</td><td>POR · PORTICO</td></tr>"
             "<tr><td>Cimentación</td><td>CIM · ZAPATAS</td></tr>"
             "<tr><td>Rótulo / cajetín</td><td>ROT · ROTULO · CAJETIN</td></tr>"

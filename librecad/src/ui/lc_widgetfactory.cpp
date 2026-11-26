@@ -754,6 +754,7 @@ void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
             {"Mobiliario", "Anexar mobiliario", "MOB"},
             {"Electrodomésticos", "Anexar electrodomésticos", "ELEC · APP"},
             {"Sanitarios", "Anexar aparatos sanitarios", "SAN"},
+            {"Render 3D", "Render de la planta", "RENDER · REN"},
             {"Pórtico", "Pórtico", "PORTICO · POR"},
             {"Cimentación", "Cimentación", "CIMENTACION · CIM"},
             {"Rótulo", "Rótulo", "ROTULO · ROT"},

@@ -964,6 +964,35 @@ inline bool cierreVano(const std::string &t, std::vector<Seg> &segs) {
     return true;
 }
 
+// Muro para el render 3D: su polígono en planta.
+//   DUCTUS-MURO|x,y;x,y;x,y;...
+inline std::string datoMuro(const std::vector<P> &poligono) {
+    std::string s = "DUCTUS-MURO|";
+    char buf[64];
+    for (size_t i = 0; i < poligono.size(); ++i) {
+        std::snprintf(buf, sizeof buf, "%s%.6f,%.6f", i ? ";" : "", poligono[i].x, poligono[i].y);
+        s += buf;
+    }
+    return s;
+}
+
+inline bool leerDatoMuro(const std::string &t, std::vector<P> &poligono) {
+    poligono.clear();
+    const auto p = partir(t, '|');
+    if (p.size() < 2 || p[0] != "DUCTUS-MURO") return false;
+    for (const std::string &par : partir(p[1], ';')) {
+        const auto xy = partir(par, ',');
+        double x, y;
+        if (xy.size() != 2 || !leerNumero(xy[0], x) || !leerNumero(xy[1], y)) return false;
+        poligono.emplace_back(x, y);
+    }
+    return poligono.size() >= 3;
+}
+
+inline std::vector<P> esquinas(const Rect &r) {
+    return {P(r.x1, r.y1), P(r.x2, r.y1), P(r.x2, r.y2), P(r.x1, r.y2)};
+}
+
 // Fila del cuadro de puertas y ventanas: una por marca, con la cantidad.
 struct FilaVano {
     DatoVano dato;

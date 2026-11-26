@@ -190,6 +190,10 @@ jobs:
           mkdir dual\x64\tutoriales dual\x86\tutoriales
           copy /y "edwin\tutoriales\*.pdf" dual\x64\tutoriales\
           copy /y "edwin\tutoriales\*.pdf" dual\x86\tutoriales\
+          rem Guion de Blender para el render de la planta amoblada (menú DuctusArq > Render).
+          mkdir dual\x64\render dual\x86\render
+          copy /y "edwin\render\ductusarq_render.py" dual\x64\render\
+          copy /y "edwin\render\ductusarq_render.py" dual\x86\render\
           cd scripts\postprocess-windows
           makensis.exe /V3 /DDUAL /DDUCTUSARQ /DSCMREVISION="%VERSION%" /DVIProductVersion="%VERSION%.0" nsis-msvc.nsi
           if errorlevel 1 exit /b 1

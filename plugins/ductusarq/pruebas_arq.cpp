@@ -289,6 +289,14 @@ int main() {
         ok(r.lote == 0 && r.indiceOcupacion == 0, "sin lote no hay índices");
     }
 
+    // --- Dato de muro (render 3D)
+    {
+        std::vector<P> pol;
+        const std::string t = datoMuro(esquinas(rect(0, 0, 6, 0.15)));
+        ok(leerDatoMuro(t, pol) && pol.size() == 4 && cerca(pol[2].x, 6) && cerca(pol[2].y, 0.15), "dato de muro ida y vuelta");
+        ok(!leerDatoMuro("DUCTUS-MURO|1,2;3", pol), "dato de muro mal escrito");
+        ok(!leerDatoMuro("DUCTUS-VANO|x", pol), "no es muro");
+    }
     // --- Muebles
     {
         bool todasDibujan = true, dentro = true, medidas = true;

@@ -197,6 +197,11 @@ void DuctusArq::casaRapida(Document_Interface *doc, QWidget *parent)
     da::capa(doc, "A-MUROS");
     da::segmentos(doc, base, arq::contornoUnion(todo));
     columnasEn(doc, base, g.columnas);
+    {   // muros y columnas para el render 3D de la planta amoblada
+        std::vector<std::vector<arq::P>> polis;
+        for (const arq::Rect &r : todo) polis.push_back(arq::esquinas(r));
+        da::datosMuros(doc, base, polis, v.un);
+    }
 
     const double dCota1 = un.papel(8), dCota2 = un.papel(15), dEje = un.papel(22);
     if (cEjes->isChecked())
@@ -284,11 +289,15 @@ void DuctusArq::columnas(Document_Interface *doc, QWidget *parent)
         for (double x : arq::posicionesEjes(lx))
             for (double y : arq::posicionesEjes(ly)) cols.push_back(columna(x, y));
         columnasEn(doc, base, cols);
+        std::vector<std::vector<arq::P>> polis;
+        for (const arq::Rect &r : cols) polis.push_back(arq::esquinas(r));
+        da::datosMuros(doc, base, polis, v.un);
     } else {
         QPointF p;
         int n = 0;
         while (doc->getPoint(&p, u("Columna %1: haga clic en el centro (Enter o Esc para terminar)").arg(n + 1))) {
             columnasEn(doc, p, {columna(0, 0)});
+            da::datosMuros(doc, p, {arq::esquinas(columna(0, 0))}, v.un);
             ++n;
             doc->updateView();
         }
@@ -336,6 +345,15 @@ void DuctusArq::muro(Document_Interface *doc, QWidget *parent)
     da::capa(doc, "A-MUROS");
     da::polilinea(doc, cero, m.izquierda, cerrado);
     da::polilinea(doc, cero, m.derecha, cerrado);
+    {   // un cuadrilátero por tramo, para el render 3D
+        std::vector<std::vector<arq::P>> polis;
+        const size_t n = m.izquierda.size();
+        for (size_t i = 0; i + 1 < n || (cerrado && i < n); ++i) {
+            const size_t j = (i + 1) % n;
+            polis.push_back({m.izquierda[i], m.izquierda[j], m.derecha[j], m.derecha[i]});
+        }
+        da::datosMuros(doc, cero, polis, v.un);
+    }
     if (!cerrado) {  // tapas en los extremos
         da::linea(doc, cero, m.izquierda.front(), m.derecha.front());
         da::linea(doc, cero, m.izquierda.back(), m.derecha.back());

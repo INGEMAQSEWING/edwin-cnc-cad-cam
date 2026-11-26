@@ -32,8 +32,6 @@ using da::u;
 
 namespace {
 
-const char *CAPA_DATOS = "A-DATOS";
-
 struct EntidadMuro {
     Plug_Entity *e;
     bool polilinea;
@@ -83,33 +81,8 @@ std::vector<arq::Seg> todosLosSegmentos(const std::vector<EntidadMuro> &v) {
     return s;
 }
 
-// Textos de datos DUCTUS-... del dibujo.
-QStringList leerDatos(Document_Interface *doc, const QString &prefijo) {
-    QStringList r;
-    QList<Plug_Entity *> todas;
-    doc->getAllEntities(&todas, false);
-    for (Plug_Entity *e : todas) {
-        QHash<int, QVariant> d;
-        e->getData(&d);
-        const int tipo = d.value(DPI::ETYPE).toInt();
-        if (tipo == DPI::TEXT || tipo == DPI::MTEXT) {
-            const QString t = d.value(DPI::TEXTCONTENT).toString();
-            if (t.startsWith(prefijo)) r << t;
-        }
-        delete e;
-    }
-    return r;
-}
-
-void dato(Document_Interface *doc, const QPointF &pos, const QString &t, const arq::Unidades &un) {
-    const QString antes = doc->getCurrentLayer();
-    const bool existe = doc->getAllLayer().contains(CAPA_DATOS, Qt::CaseInsensitive);
-    doc->setLayer(CAPA_DATOS);
-    if (!existe) doc->setCurrentLayerProperties(0xC8C8C8, DPI::Width00, DPI::SolidLine);
-    QPointF p = pos;
-    doc->addText(t, "standard", &p, un.papel(0.6), 0, DPI::HAlignLeft, DPI::VAlignBottom);
-    doc->setLayer(antes);
-}
+using da::dato;
+using da::leerDatos;
 
 void arco(Document_Interface *doc, const arq::Arco &a) {
     QPointF c(a.c.x, a.c.y);
