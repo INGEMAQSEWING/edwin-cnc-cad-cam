@@ -2317,6 +2317,8 @@ static void ductusArqDibujoNuevo(RS_Graphic* graphic) {
         {"A-COTAS", 0, 140, 0, RS2::Width05, RS2::SolidLine},
         {"A-TEXTOS", 0, 0, 160, RS2::Width07, RS2::SolidLine},
         {"A-SIMBOLOS", 120, 0, 160, RS2::Width05, RS2::SolidLine},
+        {"A-ELECTRODOMESTICOS", 120, 120, 120, RS2::Width03, RS2::SolidLine},
+        {"A-SANITARIOS", 0, 110, 160, RS2::Width03, RS2::SolidLine},
         {"A-MOBILIARIO", 140, 140, 140, RS2::Width03, RS2::SolidLine},
         {"S-CIMENTACION", 170, 0, 170, RS2::Width09, RS2::DashLine},
         {"S-PORTICOS", 0, 80, 200, RS2::Width09, RS2::SolidLine},

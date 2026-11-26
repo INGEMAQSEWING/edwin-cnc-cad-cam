@@ -43,6 +43,8 @@ private:
     void cuadroVanos(Document_Interface *doc, QWidget *parent);
     void espacio(Document_Interface *doc, QWidget *parent);
     void cuadroAreas(Document_Interface *doc, QWidget *parent);
+    // mobiliario.cpp (grupo: 0 mobiliario, 1 electrodomésticos, 2 sanitarios, -1 el último usado)
+    void anexarMueble(Document_Interface *doc, QWidget *parent, int grupo);
     // rotulo.cpp
     void rotulo(Document_Interface *doc, QWidget *parent);
     // ductusarq.cpp

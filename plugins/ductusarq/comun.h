@@ -72,6 +72,8 @@ inline const std::vector<CapaArq> &capasArq() {
         {"A-TEXTOS", 0x0000A0, DPI::Width07, DPI::SolidLine},
         {"A-SIMBOLOS", 0x7800A0, DPI::Width05, DPI::SolidLine},
         {"A-MOBILIARIO", 0x8C8C8C, DPI::Width03, DPI::SolidLine},
+        {"A-ELECTRODOMESTICOS", 0x787878, DPI::Width03, DPI::SolidLine},
+        {"A-SANITARIOS", 0x006EA0, DPI::Width03, DPI::SolidLine},
         {"S-CIMENTACION", 0xAA00AA, DPI::Width09, DPI::DashLine},
         {"S-PORTICOS", 0x0050C8, DPI::Width09, DPI::SolidLine},
         {"G-ROTULO", 0x000000, DPI::Width09, DPI::SolidLine},

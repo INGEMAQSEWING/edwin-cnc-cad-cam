@@ -1,6 +1,7 @@
 // Pruebas de arq.h (sin Qt). Compilar:
 //   py -3.10 -m ziglang c++ -std=c++17 pruebas_arq.cpp -o pruebas_arq.exe && pruebas_arq.exe
 #include "arq.h"
+#include "muebles.h"
 
 #include <cstdio>
 
@@ -286,6 +287,41 @@ int main() {
         es.pop_back();
         r = resumirAreas(es);
         ok(r.lote == 0 && r.indiceOcupacion == 0, "sin lote no hay índices");
+    }
+
+    // --- Muebles
+    {
+        bool todasDibujan = true, dentro = true, medidas = true;
+        for (const Pieza &pz : catalogo()) {
+            for (int sis = 0; sis < 2; ++sis) {
+                const double w = sis ? pz.anchoIn : pz.anchoM, f = sis ? pz.fondoIn : pz.fondoM;
+                const double uu = sis ? 2.0 : 0.05;
+                if (w <= 0 || f <= 0) medidas = false;
+                const Dibujo d = dibujarPieza(pz, w, f, uu, sis == 1);
+                if (d.lineas.empty() && d.circulos.empty()) todasDibujan = false;
+                // Las sillas del comedor y del escritorio salen de la mesa: margen de 1 silla.
+                const std::string id = pz.id;
+                const double m = (id.rfind("comedor", 0) == 0 || id == "escritorio") ? (sis ? 30.0 : 0.75) : 1e-9;
+                for (const Seg &s : d.lineas)
+                    for (P q : {s.a, s.b})
+                        if (std::fabs(q.x) > w / 2 + m || std::fabs(q.y) > f / 2 + m) {
+                            dentro = false;
+                            std::printf("   %s se sale: %.3f %.3f\n", pz.id, q.x, q.y);
+                        }
+            }
+            if (pz.altoM <= 0 || pz.altoIn <= 0) medidas = false;
+        }
+        ok(catalogo().size() >= 30, "catálogo con 30 piezas o más");
+        ok(todasDibujan, "todas las piezas se dibujan");
+        ok(dentro, "las piezas no se salen de su tamaño");
+        ok(medidas, "todas tienen ancho, fondo y alto");
+        ok(buscarPieza("cama_queen") && cerca(buscarPieza("cama_queen")->anchoIn, 60), "cama queen de 60\"");
+        ok(!buscarPieza("no_existe"), "pieza que no existe");
+        Dibujo d;
+        d.lineas.push_back({P(1, 0), P(1, 1)});
+        Dibujo r = colocar(d, P(10, 5), 90);
+        ok(cerca(r.lineas[0].a.x, 10) && cerca(r.lineas[0].a.y, 6) && cerca(r.lineas[0].b.x, 9), "colocar y girar 90°");
+        ok(datoMueble(*buscarPieza("nevera"), P(1, 2), 0, 0.7, 0.7, 1.75).rfind("DUCTUS-MUEBLE|nevera|1.0", 0) == 0, "dato de mueble");
     }
 
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
