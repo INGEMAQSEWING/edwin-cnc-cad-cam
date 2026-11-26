@@ -33,6 +33,10 @@ const char *CMD_COLUMNAS = "Columnas...";
 const char *CMD_MURO = "Muro (por puntos, con espesor)...";
 const char *CMD_PORTICO = "Pórtico (alzado: columnas, vigas y zapatas)...";
 const char *CMD_CIMENTACION = "Cimentación (zapatas y vigas en planta)...";
+const char *CMD_VANO = "Puerta / ventana en el muro...";
+const char *CMD_CUADRO_VANOS = "Cuadro de puertas y ventanas";
+const char *CMD_ESPACIO = "Área de un espacio (clic adentro)...";
+const char *CMD_CUADRO_AREAS = "Cuadro de áreas e índices";
 const char *CMD_ROTULO = "Rótulo / cajetín por especialidad...";
 const char *CMD_MEDIDAS = "Sistema de medidas y escala (metros o pies)...";
 const char *CMD_CAPAS = "Capas de arquitectura e ingeniería";
@@ -67,8 +71,9 @@ PluginCapabilities DuctusArq::getCapabilities() const
 {
     PluginCapabilities pc;
     if (!esDuctusArq()) return pc;  // en EDWIN CNC CAD-CAM / CAD2CAM no se muestra
-    for (const char *c : {CMD_CASA, CMD_EJES, CMD_COLUMNAS, CMD_MURO, CMD_PORTICO, CMD_CIMENTACION,
-                          CMD_ROTULO, CMD_MEDIDAS, CMD_CAPAS, CMD_COMANDOS, CMD_ACERCA})
+    for (const char *c : {CMD_CASA, CMD_EJES, CMD_COLUMNAS, CMD_MURO, CMD_VANO, CMD_ESPACIO, CMD_CUADRO_VANOS,
+                          CMD_CUADRO_AREAS, CMD_PORTICO, CMD_CIMENTACION, CMD_ROTULO, CMD_MEDIDAS, CMD_CAPAS,
+                          CMD_COMANDOS, CMD_ACERCA})
         pc.menuEntryPoints << PluginMenuLocation(MENU, u(c));
     return pc;
 }
@@ -81,6 +86,10 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
     else if (cmd == u(CMD_MURO)) muro(doc, parent);
     else if (cmd == u(CMD_PORTICO)) portico(doc, parent);
     else if (cmd == u(CMD_CIMENTACION)) cimentacion(doc, parent);
+    else if (cmd == u(CMD_VANO)) puertaVentana(doc, parent);
+    else if (cmd == u(CMD_CUADRO_VANOS)) cuadroVanos(doc, parent);
+    else if (cmd == u(CMD_ESPACIO)) espacio(doc, parent);
+    else if (cmd == u(CMD_CUADRO_AREAS)) cuadroAreas(doc, parent);
     else if (cmd == u(CMD_ROTULO)) rotulo(doc, parent);
     else if (cmd == u(CMD_MEDIDAS)) sistemaDeMedidas(doc, parent);
     else if (cmd == u(CMD_CAPAS)) {
@@ -100,6 +109,10 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
             "<tr><td>Ejes con burbujas</td><td>EJ · EJES</td></tr>"
             "<tr><td>Columnas</td><td>COL · COLUMNA</td></tr>"
             "<tr><td>Muro con espesor</td><td>MU · MURO</td></tr>"
+            "<tr><td>Puerta o ventana en el muro</td><td>PUE · PUERTA · VEN · VENTANA · VANO</td></tr>"
+            "<tr><td>Área de un espacio (clic adentro)</td><td>ESP · ESPACIO</td></tr>"
+            "<tr><td>Cuadro de puertas y ventanas</td><td>CV · CUADROVANOS</td></tr>"
+            "<tr><td>Cuadro de áreas e índices</td><td>CA · AREAS · CUADROAREAS</td></tr>"
             "<tr><td>Pórtico (alzado)</td><td>POR · PORTICO</td></tr>"
             "<tr><td>Cimentación</td><td>CIM · ZAPATAS</td></tr>"
             "<tr><td>Rótulo / cajetín</td><td>ROT · ROTULO · CAJETIN</td></tr>"

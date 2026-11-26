@@ -2326,6 +2326,13 @@ static void ductusArqDibujoNuevo(RS_Graphic* graphic) {
         capa->setPen(RS_Pen(RS_Color(c.r, c.g, c.b), c.ancho, c.tipo));
         graphic->addLayer(capa);
     }
+    // A-DATOS: textos de datos de puertas, ventanas y espacios (para los cuadros). No se imprime.
+    if (lista->find("A-DATOS") == nullptr) {
+        auto datos = new RS_Layer("A-DATOS");
+        datos->setPen(RS_Pen(RS_Color(200, 200, 200), RS2::Width00, RS2::SolidLine));
+        datos->setPrint(false);
+        graphic->addLayer(datos);
+    }
     if (RS_Layer* muros = lista->find("A-MUROS")) lista->activate(muros, true);
     graphic->setModified(false);
 }

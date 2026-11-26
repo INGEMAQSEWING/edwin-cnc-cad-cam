@@ -614,6 +614,422 @@ inline std::string textoEscala(double escala, Sistema sistema) {
     return buf;
 }
 
+// ---------------------------------------------------------------------------
+// Rótulo en FRANJA VERTICAL a la derecha (estilo EE. UU. / NCS, el que usan en Miami):
+// arriba queda libre el cuadro de 4.5" x 4.5" para el sello de la ciudad (City of Miami pide
+// ese hueco en la esquina de arriba a la derecha) y abajo el número de plancha grande.
+// altoMarco = alto del marco en mm. Necesita hojas de ARCH C (18") o más grandes.
+inline bool franjaCabe(double altoMarco) { return altoMarco >= 400; }
+
+inline Rotulo rotuloFranja(double altoMarco) {
+    Rotulo r;
+    r.ancho = 114.3;  // 4.5"
+    r.alto = altoMarco;
+    const double w = r.ancho;
+    double y = 0;
+    auto c = [&](double h, const char *et, const char *cl, double alto) {
+        r.casillas.push_back({0, y, w, h, et, cl, alto});
+        y += h;
+    };
+    auto dos = [&](double h, const char *et1, const char *cl1, const char *et2, const char *cl2, double alto) {
+        r.casillas.push_back({0, y, w / 2, h, et1, cl1, alto});
+        r.casillas.push_back({w / 2, y, w / 2, h, et2, cl2, alto});
+        y += h;
+    };
+    c(32, "SHEET / PLANCHA", "plancha", 12.0);
+    dos(10, "SHEET / HOJA", "hoja", "DATE / FECHA", "fecha", 2.5);
+    dos(10, "SCALE / ESCALA", "escala", "REV.", "revision", 2.5);
+    dos(10, "DRAWN / ELABORÓ", "elaboro", "CHECKED / REVISÓ", "reviso", 2.5);
+    c(18, "SHEET TITLE / CONTENIDO", "contenido", 3.5);
+    c(10, "DISCIPLINE / DISCIPLINA", "disciplina", 2.2);
+    c(10, "PHASE / FASE", "fase", 2.2);
+    c(40, "REVISIONS / REVISIONES", "revisiones", 2.2);
+    c(14, "PROJECT / PROYECTO", "proyecto", 3.5);
+    c(10, "ADDRESS / DIRECCIÓN", "direccion", 2.2);
+    c(10, "OWNER / PROPIETARIO", "propietario", 2.5);
+    c(84, "PROFESSIONAL SEAL / SELLO Y FIRMA (3\" x 3\")", "profesional", 2.2);
+    c(22, "FIRM / EMPRESA", "empresa", 3.0);
+    const double ciudad = 114.3;
+    const double notas = altoMarco - y - ciudad;
+    if (notas > 0) c(notas, "GENERAL NOTES / NOTAS", "notas", 2.2);
+    c(ciudad, "RESERVED FOR CITY STAMP / RESERVADO SELLO DE LA CIUDAD", "sello", 2.2);
+    return r;
+}
+
+// ---------------------------------------------------------------------------
+// Puertas, ventanas y vanos dentro de un muro.
+// Coordenadas locales del vano: u a lo largo del muro (0..ancho) y w a través (0 = la cara
+// donde se hizo clic, espesor = la otra cara).
+enum class TipoVano { Batiente = 0, Doble = 1, Corrediza = 2, Ventana = 3, Vano = 4 };
+
+inline const char *nombreTipoVano(TipoVano t) {
+    switch (t) {
+    case TipoVano::Batiente: return "PUERTA BATIENTE 1 HOJA";
+    case TipoVano::Doble: return "PUERTA BATIENTE 2 HOJAS";
+    case TipoVano::Corrediza: return "PUERTA CORREDIZA";
+    case TipoVano::Ventana: return "VENTANA";
+    default: return "VANO (SIN PUERTA)";
+    }
+}
+
+struct Vano {
+    TipoVano tipo = TipoVano::Batiente;
+    P o;              // inicio del vano sobre la cara donde se hizo clic
+    P dir{1, 0};      // a lo largo del muro (unitario)
+    P n{0, 1};        // hacia la otra cara (unitario)
+    double ancho = 0.9, espesor = 0.15;
+    int lado = 1;            // puertas: +1 abre hacia el lado de la otra cara, -1 hacia el lado del clic
+    bool bisagraInicio = true;  // bisagra en u = 0 (si no, en u = ancho)
+};
+
+inline P local(const Vano &v, double uu, double ww) { return v.o + v.dir * uu + v.n * ww; }
+inline double punto(P a, P b) { return a.x * b.x + a.y * b.y; }
+
+struct Arco {
+    P c;
+    double r, a1, a2;  // radianes, sentido antihorario de a1 a a2
+};
+
+// Busca la otra cara del muro: la línea paralela más cercana (no la misma cara) que pasa por
+// el tramo del vano, a menos de maxEspesor. Devuelve false si no hay.
+inline bool buscarOtraCara(const std::vector<Seg> &segs, P o, P dir, double ancho, double maxEspesor,
+                           double tol, double &w) {
+    const P perp(-dir.y, dir.x);
+    bool hay = false;
+    double mejor = 0;
+    for (const Seg &s : segs) {
+        const P d = s.b - s.a;
+        const double l = largo(d);
+        if (l < tol) continue;
+        if (std::fabs(d.x * dir.y - d.y * dir.x) / l > 1e-3) continue;  // no paralela
+        const double wa = punto(s.a - o, perp);
+        if (std::fabs(wa) < tol || std::fabs(wa) > maxEspesor) continue;
+        double ua = punto(s.a - o, dir), ub = punto(s.b - o, dir);
+        if (ua > ub) std::swap(ua, ub);
+        if (ub < tol || ua > ancho - tol) continue;  // no pasa por el vano
+        if (!hay || std::fabs(wa) < std::fabs(mejor)) { mejor = wa; hay = true; }
+    }
+    if (hay) w = mejor;
+    return hay;
+}
+
+// Corta un segmento de cara de muro donde cae el vano. Devuelve los pedazos que quedan
+// (el mismo segmento si no lo toca).
+inline std::vector<Seg> cortarPorVano(const Seg &s, const Vano &v, double tol) {
+    const double wa = punto(s.a - v.o, v.n), wb = punto(s.b - v.o, v.n);
+    const double ua = punto(s.a - v.o, v.dir), ub = punto(s.b - v.o, v.dir);
+    const bool paralela = std::fabs(wa - wb) < tol;
+    const bool enMuro = wa > -tol && wa < v.espesor + tol;
+    const double u1 = std::min(ua, ub), u2 = std::max(ua, ub);
+    if (!paralela || !enMuro || u2 <= tol || u1 >= v.ancho - tol) return {s};
+    std::vector<Seg> r;
+    if (u1 < -tol) r.push_back({local(v, u1, wa), local(v, 0, wa)});
+    if (u2 > v.ancho + tol) r.push_back({local(v, v.ancho, wa), local(v, u2, wa)});
+    return r;
+}
+
+struct SimboloVano {
+    std::vector<Seg> lineas;
+    std::vector<Arco> arcos;
+    P marca;  // donde va la marca P-1 / V-1
+};
+
+inline double angulo(P d) { return std::atan2(d.y, d.x); }
+
+// Arco de 90° de la hoja: de la hoja abierta a la posición cerrada, por el lado corto.
+inline Arco arcoHoja(P centro, P abierta, P cerrada) {
+    double a = angulo(abierta - centro), b = angulo(cerrada - centro);
+    const double PI2 = 6.283185307179586;
+    double barrido = std::fmod(b - a + 2 * PI2, PI2);
+    if (barrido > PI2 / 2) std::swap(a, b);
+    return {centro, largo(abierta - centro), a, b};
+}
+
+inline SimboloVano simboloVano(const Vano &v, double separacionMarca) {
+    SimboloVano s;
+    const double e = v.espesor, A = v.ancho;
+    auto L = [&](double u1, double w1, double u2, double w2) { s.lineas.push_back({local(v, u1, w1), local(v, u2, w2)}); };
+    // Jambas: cierran el muro a los dos lados del vano.
+    L(0, 0, 0, e);
+    L(A, 0, A, e);
+    const double cara = v.lado < 0 ? 0 : e;  // cara por donde abre la puerta
+    auto hoja = [&](double uBisagra, double uCierre) {
+        const double wAbierta = cara + (v.lado < 0 ? -1 : 1) * std::fabs(uCierre - uBisagra);
+        L(uBisagra, cara, uBisagra, wAbierta);
+        s.arcos.push_back(arcoHoja(local(v, uBisagra, cara), local(v, uBisagra, wAbierta), local(v, uCierre, cara)));
+    };
+    switch (v.tipo) {
+    case TipoVano::Batiente:
+        if (v.bisagraInicio) hoja(0, A); else hoja(A, 0);
+        break;
+    case TipoVano::Doble:
+        hoja(0, A / 2);
+        hoja(A, A / 2);
+        break;
+    case TipoVano::Corrediza: {
+        // Dos hojas que se cruzan dentro del espesor del muro.
+        auto rect = [&](double u1, double u2, double w1, double w2) {
+            L(u1, w1, u2, w1); L(u2, w1, u2, w2); L(u2, w2, u1, w2); L(u1, w2, u1, w1);
+        };
+        rect(0, A * 0.55, e * 0.30, e * 0.45);
+        rect(A * 0.45, A, e * 0.55, e * 0.70);
+        break;
+    }
+    case TipoVano::Ventana:
+        L(0, 0, A, 0);
+        L(0, e, A, e);
+        L(0, e * 0.45, A, e * 0.45);  // vidrio (doble línea al centro)
+        L(0, e * 0.55, A, e * 0.55);
+        break;
+    case TipoVano::Vano:
+        break;
+    }
+    // La marca va al lado contrario de donde abre la puerta (en ventanas, del lado del clic).
+    const bool afuera = v.tipo == TipoVano::Ventana || v.tipo == TipoVano::Vano || v.lado > 0;
+    s.marca = local(v, A / 2, afuera ? -separacionMarca : e + separacionMarca);
+    return s;
+}
+
+// ---------------------------------------------------------------------------
+// Área de un espacio con un clic adentro (muros rectos, como «sombreado por punto interior»).
+// Se usan las líneas horizontales y verticales cercanas; las de otros ángulos no cierran.
+struct AreaEspacio {
+    bool cerrado = false;
+    double area = 0;
+    std::vector<Rect> celdas;
+};
+
+inline AreaEspacio areaPorPunto(const std::vector<Seg> &segs, P punto, double radio, double tol) {
+    AreaEspacio r;
+    struct Lin { double fija, a, b; };
+    std::vector<Lin> verticales, horizontales;
+    std::vector<double> xs{punto.x - radio, punto.x + radio}, ys{punto.y - radio, punto.y + radio};
+    for (const Seg &s : segs) {
+        const double dx = s.b.x - s.a.x, dy = s.b.y - s.a.y;
+        if (std::fabs(dx) < tol && std::fabs(dy) >= tol) {
+            const double x = (s.a.x + s.b.x) / 2;
+            if (std::fabs(x - punto.x) > radio) continue;
+            verticales.push_back({x, std::min(s.a.y, s.b.y), std::max(s.a.y, s.b.y)});
+            xs.push_back(x); ys.push_back(s.a.y); ys.push_back(s.b.y);
+        } else if (std::fabs(dy) < tol && std::fabs(dx) >= tol) {
+            const double y = (s.a.y + s.b.y) / 2;
+            if (std::fabs(y - punto.y) > radio) continue;
+            horizontales.push_back({y, std::min(s.a.x, s.b.x), std::max(s.a.x, s.b.x)});
+            ys.push_back(y); xs.push_back(s.a.x); xs.push_back(s.b.x);
+        }
+    }
+    auto unicos = [tol, &punto, radio](std::vector<double> &v, double centro) {
+        std::vector<double> w;
+        for (double a : v) if (std::fabs(a - centro) <= radio + tol) w.push_back(a);
+        std::sort(w.begin(), w.end());
+        std::vector<double> u;
+        for (double a : w) if (u.empty() || a - u.back() > tol) u.push_back(a);
+        v.swap(u);
+        (void)punto;
+    };
+    unicos(xs, punto.x);
+    unicos(ys, punto.y);
+    if (xs.size() < 2 || ys.size() < 2) return r;
+    const size_t nx = xs.size() - 1, ny = ys.size() - 1;
+    auto indice = [tol](const std::vector<double> &v, double a) -> long {
+        for (size_t i = 0; i < v.size(); ++i) if (std::fabs(v[i] - a) <= tol) return static_cast<long>(i);
+        return -1;
+    };
+    // Bloqueos: bordeV[i][j] = hay línea vertical en x = xs[i] que tapa la fila j.
+    std::vector<char> bordeV((nx + 1) * ny, 0), bordeH(nx * (ny + 1), 0);
+    for (const Lin &l : verticales) {
+        const long i = indice(xs, l.fija);
+        if (i < 0) continue;
+        for (size_t j = 0; j < ny; ++j) {
+            const double m = (ys[j] + ys[j + 1]) / 2;
+            if (m > l.a && m < l.b) bordeV[static_cast<size_t>(i) * ny + j] = 1;
+        }
+    }
+    for (const Lin &l : horizontales) {
+        const long j = indice(ys, l.fija);
+        if (j < 0) continue;
+        for (size_t i = 0; i < nx; ++i) {
+            const double m = (xs[i] + xs[i + 1]) / 2;
+            if (m > l.a && m < l.b) bordeH[i * (ny + 1) + static_cast<size_t>(j)] = 1;
+        }
+    }
+    size_t ci = 0, cj = 0;
+    while (ci + 1 < nx && xs[ci + 1] <= punto.x) ++ci;
+    while (cj + 1 < ny && ys[cj + 1] <= punto.y) ++cj;
+    std::vector<char> visto(nx * ny, 0);
+    std::vector<std::pair<size_t, size_t>> pila{{ci, cj}};
+    visto[ci * ny + cj] = 1;
+    bool fuga = false;
+    while (!pila.empty()) {
+        const auto [i, j] = pila.back();
+        pila.pop_back();
+        r.celdas.push_back(rect(xs[i], ys[j], xs[i + 1], ys[j + 1]));
+        r.area += (xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]);
+        auto ir = [&](long a, long b, bool bloqueado) {
+            if (bloqueado) return;
+            if (a < 0 || b < 0 || a >= static_cast<long>(nx) || b >= static_cast<long>(ny)) { fuga = true; return; }
+            const size_t k = static_cast<size_t>(a) * ny + static_cast<size_t>(b);
+            if (visto[k]) return;
+            visto[k] = 1;
+            pila.push_back({static_cast<size_t>(a), static_cast<size_t>(b)});
+        };
+        ir(static_cast<long>(i) - 1, static_cast<long>(j), bordeV[i * ny + j] != 0);
+        ir(static_cast<long>(i) + 1, static_cast<long>(j), bordeV[(i + 1) * ny + j] != 0);
+        ir(static_cast<long>(i), static_cast<long>(j) - 1, bordeH[i * (ny + 1) + j] != 0);
+        ir(static_cast<long>(i), static_cast<long>(j) + 1, bordeH[i * (ny + 1) + j + 1] != 0);
+        if (fuga) break;
+    }
+    r.cerrado = !fuga;
+    if (fuga) { r.area = 0; r.celdas.clear(); }
+    return r;
+}
+
+// Área de un polígono (esquinas marcadas a mano), fórmula del zapato.
+inline double areaPoligono(const std::vector<P> &p) {
+    double a = 0;
+    for (size_t i = 0; i < p.size(); ++i) {
+        const P &s = p[i], &t = p[(i + 1) % p.size()];
+        a += s.x * t.y - t.x * s.y;
+    }
+    return std::fabs(a) / 2;
+}
+
+// ---------------------------------------------------------------------------
+// Datos guardados dentro del dibujo (texto en la capa A-DATOS, que no se imprime) para
+// armar los cuadros de áreas y de puertas y ventanas:
+//   DUCTUS-VANO|marca|tipo|ancho|alto|antepecho|aprobación
+//   DUCTUS-ESPACIO|nombre|piso|área|clase   (clase: espacio, construida, lote)
+inline std::vector<std::string> partir(const std::string &s, char sep) {
+    std::vector<std::string> r;
+    std::string actual;
+    for (char c : s) {
+        if (c == sep) { r.push_back(actual); actual.clear(); }
+        else actual += c;
+    }
+    r.push_back(actual);
+    return r;
+}
+
+struct DatoVano {
+    std::string marca, tipo, aprobacion;
+    double ancho = 0, alto = 0, antepecho = 0;
+};
+
+inline bool leerDatoVano(const std::string &t, DatoVano &d) {
+    const auto p = partir(t, '|');
+    if (p.size() < 7 || p[0] != "DUCTUS-VANO") return false;
+    d.marca = p[1];
+    d.tipo = p[2];
+    d.ancho = std::atof(p[3].c_str());
+    d.alto = std::atof(p[4].c_str());
+    d.antepecho = std::atof(p[5].c_str());
+    d.aprobacion = p[6];
+    return !d.marca.empty();
+}
+
+struct DatoEspacio {
+    std::string nombre, clase;
+    int piso = 1;
+    double area = 0;
+};
+
+inline bool leerDatoEspacio(const std::string &t, DatoEspacio &d) {
+    const auto p = partir(t, '|');
+    if (p.size() < 5 || p[0] != "DUCTUS-ESPACIO") return false;
+    d.nombre = p[1];
+    d.piso = std::atoi(p[2].c_str());
+    d.area = std::atof(p[3].c_str());
+    d.clase = p[4];
+    return true;
+}
+
+// El dato de un vano lleva al final (campo 8) sus 4 esquinas "x,y,x,y,x,y,x,y": con ellas el
+// área de un espacio se cierra por las dos caras del muro en las puertas.
+inline std::string esquinasVano(const Vano &v) {
+    char buf[256];
+    const P a = local(v, 0, 0), b = local(v, v.ancho, 0), c = local(v, v.ancho, v.espesor), d = local(v, 0, v.espesor);
+    std::snprintf(buf, sizeof buf, "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f", a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+    return buf;
+}
+
+inline bool cierreVano(const std::string &t, std::vector<Seg> &segs) {
+    const auto p = partir(t, '|');
+    if (p.size() < 8 || p[0] != "DUCTUS-VANO") return false;
+    const auto n = partir(p[7], ',');
+    if (n.size() != 8) return false;
+    double v[8];
+    for (int i = 0; i < 8; ++i) if (!leerNumero(n[static_cast<size_t>(i)], v[i])) return false;
+    segs.push_back({P(v[0], v[1]), P(v[2], v[3])});
+    segs.push_back({P(v[6], v[7]), P(v[4], v[5])});
+    return true;
+}
+
+// Fila del cuadro de puertas y ventanas: una por marca, con la cantidad.
+struct FilaVano {
+    DatoVano dato;
+    int cantidad = 0;
+};
+
+inline std::vector<FilaVano> agruparVanos(const std::vector<DatoVano> &vanos) {
+    std::vector<FilaVano> f;
+    for (const DatoVano &d : vanos) {
+        bool hecho = false;
+        for (FilaVano &x : f)
+            if (x.dato.marca == d.marca) { ++x.cantidad; hecho = true; break; }
+        if (!hecho) f.push_back({d, 1});
+    }
+    // Puertas primero (P-1, P-2 ... P-10) y luego ventanas, en orden de número.
+    auto clave = [](const std::string &m) {
+        const size_t g = m.find_first_of("0123456789");
+        const std::string letra = g == std::string::npos ? m : m.substr(0, g);
+        const int numero = g == std::string::npos ? 0 : std::atoi(m.c_str() + g);
+        return std::make_pair(letra, numero);
+    };
+    std::sort(f.begin(), f.end(), [&](const FilaVano &a, const FilaVano &b) { return clave(a.dato.marca) < clave(b.dato.marca); });
+    return f;
+}
+
+// Siguiente marca libre: «P-» con {"P-1","P-3"} -> «P-4».
+inline std::string siguienteMarca(const std::string &prefijo, const std::vector<std::string> &usadas) {
+    int mayor = 0;
+    for (const std::string &m : usadas)
+        if (m.compare(0, prefijo.size(), prefijo) == 0) mayor = std::max(mayor, std::atoi(m.c_str() + prefijo.size()));
+    return prefijo + std::to_string(mayor + 1);
+}
+
+// Cuadro de áreas: totales por piso e índices.
+struct ResumenAreas {
+    std::vector<int> pisos;
+    std::vector<double> utilPorPiso, construidaPorPiso;
+    double lote = 0, construidaTotal = 0;
+    double indiceOcupacion = 0, indiceConstruccion = 0;  // 0 si no hay lote
+};
+
+inline ResumenAreas resumirAreas(const std::vector<DatoEspacio> &es) {
+    ResumenAreas r;
+    for (const DatoEspacio &e : es)
+        if (e.clase != "lote" && std::find(r.pisos.begin(), r.pisos.end(), e.piso) == r.pisos.end()) r.pisos.push_back(e.piso);
+    std::sort(r.pisos.begin(), r.pisos.end());
+    r.utilPorPiso.assign(r.pisos.size(), 0);
+    r.construidaPorPiso.assign(r.pisos.size(), 0);
+    for (const DatoEspacio &e : es) {
+        if (e.clase == "lote") { r.lote += e.area; continue; }
+        const size_t k = static_cast<size_t>(std::find(r.pisos.begin(), r.pisos.end(), e.piso) - r.pisos.begin());
+        if (e.clase == "construida") r.construidaPorPiso[k] += e.area;
+        else r.utilPorPiso[k] += e.area;
+    }
+    for (size_t k = 0; k < r.pisos.size(); ++k) {
+        // Si no se marcó el área construida del piso, se usa la suma de los espacios.
+        if (r.construidaPorPiso[k] <= 0) r.construidaPorPiso[k] = r.utilPorPiso[k];
+        r.construidaTotal += r.construidaPorPiso[k];
+    }
+    if (r.lote > 0 && !r.pisos.empty()) {
+        r.indiceOcupacion = r.construidaPorPiso.front() / r.lote;
+        r.indiceConstruccion = r.construidaTotal / r.lote;
+    }
+    return r;
+}
+
 } // namespace arq
 
 #endif // DUCTUSARQ_ARQ_H

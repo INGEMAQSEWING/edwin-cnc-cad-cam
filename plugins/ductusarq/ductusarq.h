@@ -38,6 +38,11 @@ private:
     void muro(Document_Interface *doc, QWidget *parent);
     void portico(Document_Interface *doc, QWidget *parent);
     void cimentacion(Document_Interface *doc, QWidget *parent);
+    // espacios.cpp
+    void puertaVentana(Document_Interface *doc, QWidget *parent);
+    void cuadroVanos(Document_Interface *doc, QWidget *parent);
+    void espacio(Document_Interface *doc, QWidget *parent);
+    void cuadroAreas(Document_Interface *doc, QWidget *parent);
     // rotulo.cpp
     void rotulo(Document_Interface *doc, QWidget *parent);
     // ductusarq.cpp

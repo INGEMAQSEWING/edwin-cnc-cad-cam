@@ -160,6 +160,134 @@ int main() {
     ok(numeroPlancha("A", 101) == "A-101", "número de plancha");
     ok(hojas().size() == 10 && disciplinas().size() >= 14, "listas de hojas y disciplinas");
 
+    // --- Rótulo en franja (Miami)
+    {
+        Rotulo f = rotuloFranja(609.6 - 20);  // ARCH D horizontal: 24" de alto menos márgenes
+        double sum = 0;
+        bool bien = true;
+        for (const Casilla &k : f.casillas) {
+            if (k.x < -1e-9 || k.x + k.w > f.ancho + 1e-9 || k.y < -1e-9 || k.y + k.h > f.alto + 1e-6) bien = false;
+            sum += k.w * k.h;
+        }
+        ok(bien && cerca(sum, f.ancho * f.alto, 1e-3), "franja: casillas llenan el alto");
+        ok(f.casillas.back().clave == "sello" && cerca(f.casillas.back().h, 114.3), "franja: hueco de la ciudad arriba de 4.5\"");
+        ok(f.casillas.front().clave == "plancha", "franja: plancha abajo");
+        ok(franjaCabe(437) && !franjaCabe(196), "franja solo en hojas grandes");
+    }
+    // --- Vanos
+    {
+        // Muro horizontal de 0.15: caras y = 0 y y = 0.15, de x = 0 a x = 5.
+        std::vector<Seg> muro{{P(0, 0), P(5, 0)}, {P(0, 0.15), P(5, 0.15)}};
+        double w = 0;
+        ok(buscarOtraCara(muro, P(1, 0), P(1, 0), 0.9, 0.6, 1e-6, w) && cerca(w, 0.15), "otra cara arriba");
+        ok(buscarOtraCara(muro, P(1, 0.15), P(1, 0), 0.9, 0.6, 1e-6, w) && cerca(w, -0.15), "otra cara abajo");
+        ok(!buscarOtraCara(muro, P(1, 0), P(1, 0), 0.9, 0.1, 1e-6, w), "muro más grueso que el máximo");
+        ok(!buscarOtraCara(muro, P(6, 0), P(1, 0), 0.9, 0.6, 1e-6, w), "vano fuera del muro");
+        Vano v;
+        v.o = P(1, 0); v.dir = P(1, 0); v.n = P(0, 1); v.ancho = 0.9; v.espesor = 0.15;
+        auto c1 = cortarPorVano(muro[0], v, 1e-6);
+        ok(c1.size() == 2 && cerca(c1[0].b.x, 1) && cerca(c1[1].a.x, 1.9) && cerca(c1[1].b.x, 5), "corta la cara de abajo");
+        auto c2 = cortarPorVano(muro[1], v, 1e-6);
+        ok(c2.size() == 2 && cerca(c2[0].a.y, 0.15), "corta la cara de arriba");
+        auto c3 = cortarPorVano({P(0, 2), P(5, 2)}, v, 1e-6);
+        ok(c3.size() == 1, "no corta líneas de otro muro");
+        auto c4 = cortarPorVano({P(1.2, 0), P(1.5, 0)}, v, 1e-6);
+        ok(c4.empty(), "borra el pedazo que queda dentro del vano");
+        auto c5 = cortarPorVano({P(1, 0), P(1, 0.15)}, v, 1e-6);
+        ok(c5.size() == 1, "no corta líneas perpendiculares");
+        // Puerta de 1 hoja que abre hacia arriba (lado +1) con bisagra al inicio.
+        v.tipo = TipoVano::Batiente; v.lado = 1; v.bisagraInicio = true;
+        auto s = simboloVano(v, 0.3);
+        ok(s.lineas.size() == 3 && s.arcos.size() == 1, "puerta: 2 jambas + hoja + arco");
+        ok(cerca(s.lineas[2].a.x, 1) && cerca(s.lineas[2].a.y, 0.15) && cerca(s.lineas[2].b.y, 1.05), "hoja de 0.90 hacia arriba");
+        ok(cerca(s.arcos[0].r, 0.9) && cerca(s.arcos[0].c.x, 1), "arco con centro en la bisagra");
+        double barrido = std::fmod(s.arcos[0].a2 - s.arcos[0].a1 + 4 * 3.141592653589793, 2 * 3.141592653589793);
+        ok(cerca(barrido, 3.141592653589793 / 2, 1e-9), "arco de 90°");
+        ok(s.marca.y < 0, "marca al otro lado de donde abre");
+        v.lado = -1; v.bisagraInicio = false;
+        s = simboloVano(v, 0.3);
+        ok(cerca(s.lineas[2].a.x, 1.9) && cerca(s.lineas[2].b.y, -0.9), "hoja hacia abajo con bisagra al final");
+        v.tipo = TipoVano::Doble;
+        s = simboloVano(v, 0.3);
+        ok(s.arcos.size() == 2 && cerca(s.arcos[0].r, 0.45), "puerta de 2 hojas");
+        v.tipo = TipoVano::Ventana;
+        s = simboloVano(v, 0.3);
+        ok(s.lineas.size() == 6 && s.arcos.empty(), "ventana: jambas + 4 líneas");
+        v.tipo = TipoVano::Corrediza;
+        s = simboloVano(v, 0.3);
+        ok(s.lineas.size() == 10, "corrediza: jambas + 2 hojas");
+        v.tipo = TipoVano::Vano;
+        s = simboloVano(v, 0.3);
+        ok(s.lineas.size() == 2, "vano: solo jambas");
+    }
+    // --- Área con un clic adentro
+    {
+        Casa c2;
+        c2.ancho = 6; c2.largo = 15; c2.muroExt = 0.15; c2.muroInt = 0.10;
+        c2.divX = {3.0};
+        c2.divY = {5.0, 10.0};
+        auto g2 = casaGeom(c2);
+        auto lineas = contornoUnion(g2.muros);
+        // Espacio de abajo a la izquierda: x 0.15..2.95, y 0.15..4.95
+        auto a = areaPorPunto(lineas, P(1, 1), 50, 1e-6);
+        ok(a.cerrado && cerca(a.area, 2.80 * 4.80, 1e-9), "área de la alcoba 2.80 x 4.80");
+        a = areaPorPunto(lineas, P(4, 7), 50, 1e-6);
+        ok(a.cerrado && cerca(a.area, (5.85 - 3.05) * (9.95 - 5.05), 1e-9), "área del espacio del centro derecha");
+        a = areaPorPunto(lineas, P(-1, -1), 50, 1e-6);
+        ok(!a.cerrado, "afuera de la casa: no cerrado");
+        // Una puerta abierta deja escapar el área; la línea del vano la cierra.
+        std::vector<Seg> sala{{P(0, 0), P(4, 0)}, {P(4, 0), P(4, 3)}, {P(4, 3), P(2, 3)}, {P(1, 3), P(0, 3)}, {P(0, 3), P(0, 0)}};
+        ok(!areaPorPunto(sala, P(1, 1), 50, 1e-6).cerrado, "con vano abierto se escapa");
+        sala.push_back({P(1, 3), P(2, 3)});
+        a = areaPorPunto(sala, P(1, 1), 50, 1e-6);
+        ok(a.cerrado && cerca(a.area, 12), "con la línea del vano: 12 m²");
+        ok(cerca(areaPoligono({P(0, 0), P(4, 0), P(4, 3), P(0, 3)}), 12), "área de polígono");
+        ok(cerca(areaPoligono({P(0, 0), P(4, 0), P(4, 3), P(2, 1.5), P(0, 3)}), 9), "polígono cóncavo");
+    }
+    // --- Datos y cuadros
+    {
+        DatoVano d;
+        ok(leerDatoVano("DUCTUS-VANO|P-1|PUERTA BATIENTE 1 HOJA|0.9|2.1|0|NOA 21-0101.05", d)
+               && d.marca == "P-1" && cerca(d.alto, 2.1) && d.aprobacion == "NOA 21-0101.05", "leer dato de vano");
+        ok(!leerDatoVano("OTRA COSA", d), "texto que no es dato");
+        {
+            Vano v2;
+            v2.o = P(1, 0); v2.dir = P(1, 0); v2.n = P(0, 1); v2.ancho = 1; v2.espesor = 0.15;
+            const std::string t = "DUCTUS-VANO|P-1|PUERTA|1|2.1|0||" + esquinasVano(v2);
+            std::vector<Seg> cierre;
+            ok(leerDatoVano(t, d) && d.aprobacion.empty() && cierreVano(t, cierre) && cierre.size() == 2
+                   && cerca(cierre[0].b.x, 2) && cerca(cierre[1].a.y, 0.15), "esquinas del vano en el dato");
+            // El espacio con la puerta cortada se cierra con esas líneas.
+            std::vector<Seg> sala{{P(0, 0), P(1, 0)}, {P(2, 0), P(4, 0)}, {P(4, 0), P(4, 3)}, {P(4, 3), P(0, 3)},
+                                  {P(0, 3), P(0, 0)}, {P(1, 0), P(1, 0.15)}, {P(2, 0), P(2, 0.15)},
+                                  {P(0, 0.15), P(1, 0.15)}, {P(2, 0.15), P(4, 0.15)}};
+            ok(!areaPorPunto(sala, P(3, 2), 50, 1e-6).cerrado, "sin cierre se escapa por la puerta");
+            sala.insert(sala.end(), cierre.begin(), cierre.end());
+            ok(areaPorPunto(sala, P(3, 2), 50, 1e-6).cerrado, "con cierre del vano queda cerrado");
+        }
+        std::vector<DatoVano> vs;
+        for (const char *t : {"DUCTUS-VANO|V-1|VENTANA|1.2|1.2|1|", "DUCTUS-VANO|P-10|PUERTA|0.9|2.1|0|",
+                              "DUCTUS-VANO|P-2|PUERTA|0.8|2.1|0|", "DUCTUS-VANO|P-2|PUERTA|0.8|2.1|0|"}) {
+            DatoVano x;
+            if (leerDatoVano(t, x)) vs.push_back(x);
+        }
+        auto f = agruparVanos(vs);
+        ok(f.size() == 3 && f[0].dato.marca == "P-2" && f[0].cantidad == 2 && f[1].dato.marca == "P-10"
+               && f[2].dato.marca == "V-1", "cuadro de vanos: agrupa y ordena");
+        ok(siguienteMarca("P-", {"P-1", "P-3", "V-7"}) == "P-4" && siguienteMarca("V-", {}) == "V-1", "siguiente marca");
+        DatoEspacio e;
+        ok(leerDatoEspacio("DUCTUS-ESPACIO|ALCOBA 1|1|13.44|espacio", e) && e.piso == 1 && cerca(e.area, 13.44), "leer dato de espacio");
+        std::vector<DatoEspacio> es{{"ALCOBA", "espacio", 1, 13.44}, {"SALA", "espacio", 1, 20},
+                                    {"PISO 1", "construida", 1, 90}, {"ALCOBA 2", "espacio", 2, 12},
+                                    {"LOTE", "lote", 0, 120}};
+        auto r = resumirAreas(es);
+        ok(r.pisos.size() == 2 && cerca(r.construidaPorPiso[0], 90) && cerca(r.construidaPorPiso[1], 12), "áreas por piso");
+        ok(cerca(r.construidaTotal, 102) && cerca(r.indiceOcupacion, 0.75) && cerca(r.indiceConstruccion, 0.85), "índices");
+        es.pop_back();
+        r = resumirAreas(es);
+        ok(r.lote == 0 && r.indiceOcupacion == 0, "sin lote no hay índices");
+    }
+
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;
 }

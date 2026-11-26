@@ -77,6 +77,14 @@ void DuctusArq::rotulo(Document_Interface *doc, QWidget *parent)
     agregar(u("Hoja:"), hoja, 0);
     agregar(u("Orientación:"), orient, 2);
 
+    auto formato = new QComboBox;
+    formato->addItem(u("Abajo a la derecha (ISO / Latinoamérica)"));
+    formato->addItem(u("Franja vertical a la derecha (EE. UU. / Miami, con hueco del sello de la ciudad)"));
+    formato->setCurrentIndex(cfg.value("formato", un.sistema == arq::Sistema::Imperial ? 1 : 0).toInt());
+    grid->addWidget(new QLabel(u("Formato:")), fila, 0);
+    grid->addWidget(formato, fila, 1, 1, 3);
+    ++fila;
+
     auto perfil = new QComboBox;
     perfil->addItem(u("Códigos de EE. UU. / NCS (A, S, E, P ...)"));
     perfil->addItem(u("Códigos locales Colombia / México (ARQ, EST, IE, HS ...)"));
@@ -138,6 +146,7 @@ void DuctusArq::rotulo(Document_Interface *doc, QWidget *parent)
 
     cfg.setValue("hoja", hoja->currentIndex());
     cfg.setValue("orientacion", orient->currentIndex());
+    cfg.setValue("formato", formato->currentIndex());
     cfg.setValue("perfil", perfil->currentIndex());
     cfg.setValue("disciplina", disc->currentIndex());
     cfg.setValue("numero", numero->value());
@@ -154,7 +163,16 @@ void DuctusArq::rotulo(Document_Interface *doc, QWidget *parent)
     const double W = vertical ? h.alto : h.ancho, H = vertical ? h.ancho : h.alto;  // mm
     double mIzq, mOtros;
     arq::margenes(h, mIzq, mOtros);
-    const arq::Rotulo r = arq::rotulo(h.grande);
+    bool franja = formato->currentIndex() == 1;
+    const double altoMarco = H - 2 * mOtros;
+    if (franja && !arq::franjaCabe(altoMarco)) {
+        QMessageBox::information(parent, u("Rótulo"),
+                                 u("La franja vertical (con el hueco de 4.5\" para el sello de la ciudad) necesita "
+                                   "una hoja de 18\" de alto o más (ARCH C, ARCH D, ARCH E, A2 o mayor). "
+                                   "Se dibuja el rótulo abajo a la derecha."));
+        franja = false;
+    }
+    const arq::Rotulo r = franja ? arq::rotuloFranja(altoMarco) : arq::rotulo(h.grande);
     auto P = [&](double xmm, double ymm) { return arq::P(un.papel(xmm), un.papel(ymm)); };
     auto R = [&](double x1, double y1, double x2, double y2) {
         return arq::rect(un.papel(x1), un.papel(y1), un.papel(x2), un.papel(y2));
