@@ -95,9 +95,9 @@ PluginCapabilities EdwinCnc::getCapabilities() const
 {
     PluginCapabilities pc;
     // DuctusArq 2D (planos de arquitectura) no usa las herramientas de plasma: solo Matriz,
-    // Arandela y la lista de comandos, que van en el menú «Herramientas».
+    // Arandela y la lista de comandos, que van en el menú «DuctusArq».
     if (QCoreApplication::applicationName().contains("DuctusArq", Qt::CaseInsensitive)) {
-        const char *menu = "Herramientas";
+        const char *menu = "DuctusArq";
         pc.menuEntryPoints
             << PluginMenuLocation(menu, QString::fromUtf8(CMD_MATRIZ))
             << PluginMenuLocation(menu, QString::fromUtf8(CMD_ARANDELA))

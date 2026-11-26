@@ -812,6 +812,9 @@ void QC_ApplicationWindow::fitDockLayout()
                 || mdiAreaCAD->height() < floor.height();
             int rank = dock == pen_wiz ? 0 : dockWidgetArea(dock) == Qt::LeftDockWidgetArea ? 2 : 3;
             if (names.contains(QStringLiteral("command_dockwidget"))) rank = heightPressure ? 1 : 4;
+            // CAD2CAM / DuctusArq se manejan escribiendo comandos (estilo AutoCAD): la línea de
+            // comandos es lo último que se esconde en pantallas bajas (laptops de 768 px).
+            if (edwin::esCad2cam() && names.contains(QStringLiteral("command_dockwidget"))) rank = 9;
             if (rank < priority) { candidate = dock; priority = rank; }
         }
         if (!candidate) {
