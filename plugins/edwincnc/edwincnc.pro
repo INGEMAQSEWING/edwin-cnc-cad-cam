@@ -17,9 +17,9 @@ include(../../common.pri)
 # For plugins
 INCLUDEPATH    += ../../librecad/src/plugins
 
-SOURCES += edwincnc.cpp generador.cpp herramientas.cpp
+SOURCES += edwincnc.cpp generador.cpp herramientas.cpp acomodar.cpp insertar_pieza.cpp
 
-HEADERS += edwincnc.h cam.h
+HEADERS += edwincnc.h cam.h nesting.h piezas.h
 
 # Installation Directory
 win32 {

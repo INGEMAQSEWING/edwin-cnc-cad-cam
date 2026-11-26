@@ -42,6 +42,8 @@ const char *CMD_ACERCA = "Acerca de las herramientas EDWIN CNC";
 const char *CMD_MATRIZ = "Matriz (filas y columnas o polar)...";
 const char *CMD_ARANDELA = "Arandela (dos círculos)...";
 const char *CMD_COMANDOS = "Comandos de teclado (estilo AutoCAD)";
+const char *CMD_PIEZA = "Insertar pieza por medidas (tolvas, sinfín, codos)...";
+const char *CMD_ACOMODAR = "Acomodar piezas en la lámina (nesting)...";
 
 const QString CAPA_REVISION = "REVISION";
 
@@ -92,6 +94,8 @@ PluginCapabilities EdwinCnc::getCapabilities() const
 {
     PluginCapabilities pc;
     pc.menuEntryPoints
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_PIEZA))
+        << PluginMenuLocation(MENU, QString::fromUtf8(CMD_ACOMODAR))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_REVISAR))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_GCODE))
         << PluginMenuLocation(MENU, QString::fromUtf8(CMD_LAMINA))
@@ -105,7 +109,11 @@ PluginCapabilities EdwinCnc::getCapabilities() const
 
 void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
 {
-    if (cmd == QString::fromUtf8(CMD_REVISAR))
+    if (cmd == QString::fromUtf8(CMD_PIEZA))
+        insertarPieza(doc, parent);
+    else if (cmd == QString::fromUtf8(CMD_ACOMODAR))
+        acomodarPiezas(doc, parent);
+    else if (cmd == QString::fromUtf8(CMD_REVISAR))
         revisarParaCorte(doc, parent);
     else if (cmd == QString::fromUtf8(CMD_GCODE))
         generarCodigoG(doc, parent);
@@ -152,6 +160,12 @@ void EdwinCnc::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
         QMessageBox::information(parent, "EDWIN CNC",
             QString::fromUtf8(
                 "<b>Herramientas EDWIN CNC para corte por plasma</b><br><br>"
+                "<b>Insertar pieza por medidas:</b> tolva cónica, tolva en U, tolva piramidal, cuadrado a redondo, "
+                "reducción, codo de gajos, boca de pescado y arandela de sinfín. Escriba las medidas y el desarrollo "
+                "plano aparece listo para cortar (CORTE), con dobleces y rolado en MARCADO.<br><br>"
+                "<b>Acomodar piezas en la lámina (nesting):</b> acomoda las piezas seleccionadas, de cualquier forma, "
+                "en la menor cantidad de láminas; las gira, deja la separación y mete piezas chicas en los huecos "
+                "de las grandes. Dice cuántas láminas se gastan y cuánto se aprovecha.<br><br>"
                 "<b>Revisar para corte:</b> busca contornos abiertos, huecos pequeños, "
                 "líneas repetidas y tramos diminutos en las capas que se cortan, y los "
                 "marca con círculos en la capa REVISION.<br><br>"

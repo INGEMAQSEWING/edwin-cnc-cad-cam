@@ -36,6 +36,8 @@ private:
     void borrarRevision(Document_Interface *doc);
     void matriz(Document_Interface *doc, QWidget *parent);    // herramientas.cpp
     void arandela(Document_Interface *doc, QWidget *parent);  // herramientas.cpp
+    void acomodarPiezas(Document_Interface *doc, QWidget *parent);  // acomodar.cpp (nesting)
+    void insertarPieza(Document_Interface *doc, QWidget *parent);   // insertar_pieza.cpp
 };
 
 #endif // EDWINCNC_H
