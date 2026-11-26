@@ -223,7 +223,8 @@ inline double solape(const Rect &a, const Rect &b) {
 
 // Centro para el nombre del espacio: dentro del espacio, sin tapar muebles y lo más cerca
 // posible del punto donde se hizo clic. Si no hay lugar libre, el de menos solape.
-inline P lugarLibre(const EspacioVentas &e, double w, double h, const std::vector<Rect> &obst) {
+inline P lugarLibre(const EspacioVentas &e, double w, double h, const std::vector<Rect> &obst,
+                   double *tapado = nullptr) {
     const Rect c = cajaCeldas(e.celdas);
     const double margen = std::min(w, h) * 0.15;
     P mejor = e.etiqueta;
@@ -241,8 +242,9 @@ inline P lugarLibre(const EspacioVentas &e, double w, double h, const std::vecto
             for (const Rect &o : obst) tapa += solape(t, o);
             const double dx = p.x - e.etiqueta.x, dy = p.y - e.etiqueta.y;
             const double costo = tapa * 1e6 + std::sqrt(dx * dx + dy * dy);
-            if (costo < mejorCosto) { mejorCosto = costo; mejor = p; }
+            if (costo < mejorCosto) { mejorCosto = costo; mejor = p; if (tapado) *tapado = tapa; }
         }
+    if (tapado && mejorCosto >= 1e299) *tapado = 1e9;  // no cabe dentro del espacio
     return mejor;
 }
 
@@ -365,18 +367,27 @@ inline Lamina planoVentas(const std::vector<std::vector<P>> &muros, const std::v
         std::vector<std::string> datos;
         if (op.medidas && ancho > 0) datos.push_back(medidasEspacio(ancho, fondo, sistema));
         if (op.area && e.area > 0) datos.push_back(textoArea(e.area, sistema));
-        const double total = altoNombre + datos.size() * altoDato * 1.35;
-        // Ancho estimado del bloque de texto (letra con serifa en negrita: ~0.66 del alto).
-        size_t letras = utf8Largo(e.nombre);
-        double wTexto = std::min(anchoMax, letras * altoNombre * 0.66);
-        for (const std::string &d : datos) wTexto = std::max(wTexto, std::min(anchoMax, utf8Largo(d) * altoDato * 0.6));
-        const P centro = !e.celdas.empty() ? lugarLibre(e, wTexto, total, obstaculos) : e.etiqueta;
-        double y = centro.y + total / 2 - altoNombre / 2;
-        L.textos.push_back({P(centro.x, y), e.nombre, altoNombre, anchoMax, tinta, true});
-        y -= altoNombre * 0.6 + altoDato * 0.85;
+        // Si el nombre no cabe libre (cuarto lleno de muebles), se prueba con letra más pequeña
+        // antes de encimarlo. Ancho estimado de la letra con serifa en negrita: ~0.72 del alto.
+        double hN = altoNombre, hD = altoDato, total = 0;
+        P centro = e.etiqueta;
+        for (double escala : {1.0, 0.82, 0.68}) {
+            hN = altoNombre * escala;
+            hD = altoDato * escala;
+            total = hN + datos.size() * hD * 1.35;
+            double wTexto = std::min(anchoMax, utf8Largo(e.nombre) * hN * 0.72);
+            for (const std::string &d : datos) wTexto = std::max(wTexto, std::min(anchoMax, utf8Largo(d) * hD * 0.62));
+            if (e.celdas.empty()) break;
+            double tapa = 0;
+            centro = lugarLibre(e, wTexto, total, obstaculos, &tapa);
+            if (tapa <= 0) break;
+        }
+        double y = centro.y + total / 2 - hN / 2;
+        L.textos.push_back({P(centro.x, y), e.nombre, hN, anchoMax, tinta, true});
+        y -= hN * 0.6 + hD * 0.85;
         for (const std::string &d : datos) {
-            L.textos.push_back({P(centro.x, y), d, altoDato, anchoMax, tinta, false});
-            y -= altoDato * 1.35;
+            L.textos.push_back({P(centro.x, y), d, hD, anchoMax, tinta, false});
+            y -= hD * 1.35;
         }
     }
     return L;

@@ -523,34 +523,44 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
         });
         dock_lista->setWidget(lista);
         main_window->addDockWidget(Qt::RightDockWidgetArea, dock_lista);
-        main_window->splitDockWidget(dock_lista, dock_command, Qt::Vertical);
+        main_window->tabifyDockWidget(dock_library, dock_lista);
+        QTimer::singleShot(0, dock_lista, [dock_lista]() { dock_lista->raise(); });
 
-        // Botón flotante «VENTAS»: despliega Plano de ventas 2D y Render 3D. Se puede mover a
-        // cualquier lugar o acoplar a un lado.
-        auto dock_ventas = new QDockWidget(QString::fromUtf8("Ventas"), main_window);
-        dock_ventas->setObjectName("ductusarq_ventas_dockwidget");
-        auto boton = new QToolButton(dock_ventas);
-        boton->setText(QString::fromUtf8("VENTAS  \u25BE"));
-        boton->setToolTip(QString::fromUtf8("Plano de ventas a color y render 3D para el equipo de ventas y mercadeo"));
-        boton->setPopupMode(QToolButton::InstantPopup);
-        boton->setToolButtonStyle(Qt::ToolButtonTextOnly);
-        boton->setMenu(ductusArqMenuVentas(boton));
-        boton->setMinimumSize(150, 44);
-        boton->setStyleSheet("QToolButton { font-weight: bold; font-size: 15px; color: white; background: #0b6e8a;"
-                             " border: 1px solid #08506a; border-radius: 6px; padding: 6px 14px; }"
-                             "QToolButton:hover { background: #0e86a8; }"
-                             "QToolButton::menu-indicator { image: none; }");
-        dock_ventas->setWidget(boton);
-        main_window->addDockWidget(Qt::RightDockWidgetArea, dock_ventas);
-        dock_ventas->setFloating(true);
-        dock_ventas->resize(170, 80);
-        QMainWindow* ventana = main_window;
-        QTimer::singleShot(1500, dock_ventas, [dock_ventas, ventana]() {
-            if (!dock_ventas->isFloating()) return;
-            const QRect g = ventana->geometry();
-            dock_ventas->move(g.right() - 560, g.top() + 150);
-            dock_ventas->show();
-        });
+        // Botón «VENTAS» encima del dibujo, en la esquina de arriba a la derecha: siempre a la
+        // vista (no es un panel, así no lo esconde el acomodo de paneles en pantallas bajas ni la
+        // opción de paneles flotantes). Despliega Plano de ventas 2D y Render 3D.
+        if (QWidget* zona = main_window->centralWidget()) {
+            auto boton = new QToolButton(zona);
+            boton->setObjectName("ductusarq_boton_ventas");
+            boton->setText(QString::fromUtf8("VENTAS  ") + QChar(0x25BE));
+            boton->setToolTip(QString::fromUtf8("Plano de ventas a color y render 3D para el equipo de ventas y mercadeo"));
+            boton->setPopupMode(QToolButton::InstantPopup);
+            boton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+            boton->setFocusPolicy(Qt::NoFocus);
+            boton->setMenu(ductusArqMenuVentas(boton));
+            boton->setStyleSheet("QToolButton { font-weight: bold; font-size: 14px; color: white; background: #0b6e8a;"
+                                 " border: 1px solid #08506a; border-radius: 6px; padding: 7px 16px; }"
+                                 "QToolButton:hover { background: #0e86a8; }"
+                                 "QToolButton::menu-indicator { image: none; }");
+            boton->adjustSize();
+            // Se recoloca cada vez que cambia el tamaño del área de dibujo.
+            struct Esquina : QObject {
+                QToolButton* b;
+                explicit Esquina(QToolButton* x, QObject* padre) : QObject(padre), b(x) {}
+                bool eventFilter(QObject* o, QEvent* e) override {
+                    if (e->type() == QEvent::Resize || e->type() == QEvent::Show || e->type() == QEvent::ChildAdded) {
+                        auto* w = static_cast<QWidget*>(o);
+                        b->move(w->width() - b->width() - 34, 36);
+                        b->raise();
+                    }
+                    return false;
+                }
+            };
+            zona->installEventFilter(new Esquina(boton, zona));
+            boton->move(zona->width() - boton->width() - 34, 36);
+            boton->raise();
+            boton->show();
+        }
     }
     command_widget->getDockingAction()->setText(dock_command->isFloating() ? tr("Dock") : tr("Float"));
 }
@@ -905,7 +915,7 @@ void LC_WidgetFactory::createAutocadToolbars(QG_ActionHandler* action_handler)
         }
         // «Ventas ▾» (después de Sanitarios): plano de ventas a color y render 3D.
         auto ventas = new QToolButton(arq);
-        ventas->setText(QString::fromUtf8("Ventas \u25BE"));
+        ventas->setText(QString::fromUtf8("Ventas ") + QChar(0x25BE));
         ventas->setToolTip(QString::fromUtf8("Plano de ventas a color (PV) y render 3D (REN)"));
         ventas->setPopupMode(QToolButton::InstantPopup);
         ventas->setMenu(ductusArqMenuVentas(ventas));
