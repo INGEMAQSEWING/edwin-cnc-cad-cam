@@ -6,7 +6,8 @@
 
 QT       += gui
 TEMPLATE = lib
-CONFIG += plugin
+# arq.h usa C++17 (structured bindings): con Qt 5 + MSVC common.pri no lo pide.
+CONFIG += plugin c++17
 VERSION = 1.0.0
 TARGET = $$qtLibraryTarget(ductusarq)
 
@@ -37,5 +38,5 @@ unix {
 
 # Textos en UTF-8 (tildes y eñes)
 msvc {
-    QMAKE_CXXFLAGS += /utf-8
+    QMAKE_CXXFLAGS += /utf-8 /std:c++17
 }

@@ -137,6 +137,10 @@ jobs:
           cp -r descarga/x86/app/. dual/x86/
           cp descarga/x64/qm/*.qm dual/qm/ 2>/dev/null || true
           test -f dual/x64/EDWIN-CNC.exe && test -f dual/x86/EDWIN-CNC.exe
+          # Si un plugin no compila, nmake sigue y el instalador saldría sin él: aquí se detiene.
+          for b in x64 x86; do for p in edwincnc1 ductusarq1; do
+            test -f "dual/$b/resources/plugins/$p.dll" || { echo "FALTA el plugin $p en $b"; exit 1; }
+          done; done
           VERSION="1.0.${{ github.run_number }}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
