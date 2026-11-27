@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -212,6 +213,45 @@ inline Alzado corte(const std::vector<std::vector<P>> &muros, const std::vector<
     a.niveles.push_back({P(a.ancho + 0.4 * metro, altoMuro), "N +" + textoLongitud(altoMuro, s)});
     a.niveles.push_back({P(a.ancho + 0.4 * metro, altoMuro + losa), "N +" + textoLongitud(altoMuro + losa, s)});
     return a;
+}
+
+// Varias plantas en el mismo dibujo (primer piso, segundo piso...): los muros que se tocan
+// forman una planta. Devuelve los índices de los muros de cada planta.
+inline std::vector<std::vector<size_t>> plantasSeparadas(const std::vector<std::vector<P>> &muros, double tol) {
+    const size_t n = muros.size();
+    std::vector<size_t> padre(n);
+    for (size_t i = 0; i < n; ++i) padre[i] = i;
+    std::function<size_t(size_t)> raiz = [&](size_t i) { return padre[i] == i ? i : padre[i] = raiz(padre[i]); };
+    std::vector<Rect> caja(n);
+    for (size_t i = 0; i < n; ++i) caja[i] = cajaDe({muros[i]});
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = i + 1; j < n; ++j) {
+            const Rect &a = caja[i], &b = caja[j];
+            if (a.x1 - tol <= b.x2 && b.x1 - tol <= a.x2 && a.y1 - tol <= b.y2 && b.y1 - tol <= a.y2)
+                padre[raiz(i)] = raiz(j);
+        }
+    std::vector<std::vector<size_t>> grupos;
+    std::vector<long> cual(n, -1);
+    for (size_t i = 0; i < n; ++i) {
+        const size_t r = raiz(i);
+        if (cual[r] < 0) { cual[r] = static_cast<long>(grupos.size()); grupos.emplace_back(); }
+        grupos[cual[r]].push_back(i);
+    }
+    return grupos;
+}
+
+// Solo los muros y vanos de una planta.
+inline void filtrarPlanta(const std::vector<std::vector<P>> &muros, const std::vector<VanoCantidad> &vanos,
+                          const std::vector<size_t> &grupo, std::vector<std::vector<P>> &m, std::vector<VanoCantidad> &v,
+                          double tol) {
+    m.clear();
+    v.clear();
+    for (size_t i : grupo) m.push_back(muros[i]);
+    const Rect B = cajaDe(m);
+    for (const VanoCantidad &x : vanos) {
+        const Rect r = cajaVano(x.v);
+        if (r.x1 >= B.x1 - tol && r.x2 <= B.x2 + tol && r.y1 >= B.y1 - tol && r.y2 <= B.y2 + tol) v.push_back(x);
+    }
 }
 
 } // namespace arq

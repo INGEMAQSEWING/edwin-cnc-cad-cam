@@ -468,6 +468,8 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
             {"CA", "Cuadro de áreas"},
             {"CV", "Cuadro de puertas y ventanas"},
             {"CIR", "Revisar circulación (pasillos y puertas)"},
+            {"ESC", "Escalera recta (con la norma)"},
+            {"PISO", "Piso siguiente (2.º, 3.º...)"},
             {"FAC", "Fachadas desde la planta"},
             {"COR", "Corte por una línea"},
             {"CANT", "Cantidades de obra (Excel)"},
@@ -478,6 +480,7 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
             {"POR", "Pórtico"},
             {"CIM", "Cimentación"},
             {"ROT", "Rótulo / cajetín"},
+            {"PLANT", "Plantilla de oficina"},
             {"", "COORDINACIÓN DE PLANOS"},
             {"SUP", "Superponer plano (estructural, eléctrico...)"},
             {"CRU", "Revisar cruces con el estructural"},
@@ -1260,6 +1263,36 @@ void LC_WidgetFactory::createMenus(QMenuBar* menu_bar)
     QMenu* help_menu = new QMenu(QC_ApplicationWindow::tr("&Help"), menu_bar);
     help_menu->setObjectName("Help");
     help_menu->setTearOffEnabled(true);
+
+    // Primero lo propio: tutoriales y página del programa (antes solo estaban en el menú DuctusArq).
+    if (edwin::esDuctusArq()) {
+        auto t1 = help_menu->addAction(QString::fromUtf8("Tutorial: plano para Colombia (PDF)"));
+        connect(t1, &QAction::triggered, main_window, []() {
+            QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Tutorial: plano para Colombia"));
+        });
+        auto t2 = help_menu->addAction(QString::fromUtf8("Tutorial: plano para Miami (PDF)"));
+        connect(t2, &QAction::triggered, main_window, []() {
+            QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Tutorial: plano para Miami"));
+        });
+        auto t3 = help_menu->addAction(QString::fromUtf8("Comandos de DuctusArq (teclado)"));
+        connect(t3, &QAction::triggered, main_window, []() {
+            QG_ActionHandler::edwinLanzarHerramienta(QString::fromUtf8("Comandos de DuctusArq"));
+        });
+        auto t4 = help_menu->addAction(QString::fromUtf8("Página de DuctusArq 2D (tutoriales, video y descargas)"));
+        connect(t4, &QAction::triggered, main_window, []() {
+            QDesktopServices::openUrl(QUrl("https://ingemaqsewing.github.io/ductusarq/"));
+        });
+    } else {
+        auto t1 = help_menu->addAction(QString::fromUtf8("Página de EDWIN CNC CAD/CAM (descargas y novedades)"));
+        connect(t1, &QAction::triggered, main_window, []() {
+            QDesktopServices::openUrl(QUrl("https://ingemaqsewing.github.io/#cadcam"));
+        });
+        auto t2 = help_menu->addAction(QString::fromUtf8("Calculadoras para el taller (en línea)"));
+        connect(t2, &QAction::triggered, main_window, []() {
+            QDesktopServices::openUrl(QUrl("https://ingemaqsewing.github.io/calculadoras/"));
+        });
+    }
+    help_menu->addSeparator();
 
     QAction* online_wiki    = new QAction( QC_ApplicationWindow::tr( "&Wiki"), main_window);
     QAction* online_manual  = new QAction( QC_ApplicationWindow::tr( "User's &Manual"), main_window);

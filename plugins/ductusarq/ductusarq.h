@@ -56,6 +56,11 @@ private:
     void cortes(Document_Interface *doc, QWidget *parent);
     // normas.cpp
     void revisarNormas(Document_Interface *doc, QWidget *parent);
+    // pisos.cpp
+    void escalera(Document_Interface *doc, QWidget *parent);
+    void pisoSiguiente(Document_Interface *doc, QWidget *parent);
+    // plantillas.cpp
+    void plantillaOficina(Document_Interface *doc, QWidget *parent);
     // superponer.cpp
     void superponerPlano(Document_Interface *doc, QWidget *parent);
     void revisarCruces(Document_Interface *doc, QWidget *parent);

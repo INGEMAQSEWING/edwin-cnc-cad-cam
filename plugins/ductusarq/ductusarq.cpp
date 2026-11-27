@@ -51,6 +51,9 @@ const char *CMD_CANTIDADES = "Cantidades de obra (presupuesto preliminar)...";
 const char *CMD_FACHADAS = "Fachadas (desde la planta)...";
 const char *CMD_CORTE = "Corte (marcar la línea en la planta)...";
 const char *CMD_NORMAS = "Revisar normas (Colombia, Bogotá, Florida, Miami-Dade)...";
+const char *CMD_ESCALERA = "Escalera recta (calculada con la norma)...";
+const char *CMD_PISO = "Piso siguiente (segundo piso...)...";
+const char *CMD_PLANTILLA = "Plantilla de oficina (guardar o cargar)...";
 const char *CMD_VENTAS = "Plano de ventas a color (folleto y redes)...";
 const char *CMD_TUT_CO = "Tutorial: plano para Colombia (PDF)";
 const char *CMD_TUT_MIA = "Tutorial: plano para Miami (PDF)";
@@ -89,8 +92,8 @@ PluginCapabilities DuctusArq::getCapabilities() const
     PluginCapabilities pc;
     if (!esDuctusArq()) return pc;  // en EDWIN CNC CAD-CAM / CAD2CAM no se muestra
     for (const char *c : {CMD_CASA, CMD_EJES, CMD_COLUMNAS, CMD_MURO, CMD_VANO, CMD_ESPACIO, CMD_CUADRO_VANOS,
-                          CMD_CUADRO_AREAS, CMD_FACHADAS, CMD_CORTE, CMD_CANTIDADES, CMD_CIRCULACION, CMD_NORMAS, CMD_SUPERPONER, CMD_CRUCES, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_VENTAS, CMD_RENDER, CMD_PORTICO,
-                          CMD_CIMENTACION, CMD_ROTULO, CMD_MEDIDAS, CMD_CAPAS, CMD_TUT_CO, CMD_TUT_MIA,
+                          CMD_CUADRO_AREAS, CMD_ESCALERA, CMD_PISO, CMD_FACHADAS, CMD_CORTE, CMD_CANTIDADES, CMD_CIRCULACION, CMD_NORMAS, CMD_SUPERPONER, CMD_CRUCES, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_VENTAS, CMD_RENDER, CMD_PORTICO,
+                          CMD_CIMENTACION, CMD_ROTULO, CMD_PLANTILLA, CMD_MEDIDAS, CMD_CAPAS, CMD_TUT_CO, CMD_TUT_MIA,
                           CMD_COMANDOS, CMD_ACERCA})
         pc.menuEntryPoints << PluginMenuLocation(MENU, u(c));
     return pc;
@@ -116,6 +119,9 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
     else if (cmd == u(CMD_CIRCULACION)) revisarCirculacion(doc, parent);
     else if (cmd == u(CMD_CANTIDADES)) cantidadesObra(doc, parent);
     else if (cmd == u(CMD_NORMAS)) revisarNormas(doc, parent);
+    else if (cmd == u(CMD_ESCALERA)) escalera(doc, parent);
+    else if (cmd == u(CMD_PISO)) pisoSiguiente(doc, parent);
+    else if (cmd == u(CMD_PLANTILLA)) plantillaOficina(doc, parent);
     else if (cmd == u(CMD_FACHADAS)) fachadas(doc, parent);
     else if (cmd == u(CMD_CORTE)) cortes(doc, parent);
     else if (cmd == u(CMD_SUPERPONER)) superponerPlano(doc, parent);
@@ -151,6 +157,8 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
             "<tr><td>Área de un espacio (clic adentro)</td><td>ESP · ESPACIO</td></tr>"
             "<tr><td>Cuadro de puertas y ventanas</td><td>CV · CUADROVANOS</td></tr>"
             "<tr><td>Cuadro de áreas e índices</td><td>CA · AREAS · CUADROAREAS</td></tr>"
+            "<tr><td>Escalera recta calculada con la norma</td><td>ESC · ESCALERA</td></tr>"
+            "<tr><td>Piso siguiente (segundo piso, tercero...)</td><td>PISO</td></tr>"
             "<tr><td>Fachadas desde la planta</td><td>FAC · FACHADAS</td></tr>"
             "<tr><td>Corte (marcar la línea en la planta)</td><td>COR · CORTE</td></tr>"
             "<tr><td>Revisar normas (Colombia, Bogotá, Florida, Miami-Dade)</td><td>NOR · NORMAS</td></tr>"
@@ -166,6 +174,7 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
             "<tr><td>Pórtico (alzado)</td><td>POR · PORTICO</td></tr>"
             "<tr><td>Cimentación</td><td>CIM · ZAPATAS</td></tr>"
             "<tr><td>Rótulo / cajetín</td><td>ROT · ROTULO · CAJETIN</td></tr>"
+            "<tr><td>Plantilla de oficina (capas, medidas y rótulo)</td><td>PLANT · PLANTILLA</td></tr>"
             "<tr><td>Metros o pies y escala</td><td>MEDIDAS</td></tr>"
             "<tr><td>Capas de arquitectura</td><td>CAPASARQ</td></tr>"
             "</table><br>Los comandos de dibujo de AutoCAD en español también funcionan: "

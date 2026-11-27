@@ -149,6 +149,26 @@ void DuctusArq::fachadas(Document_Interface *doc, QWidget *parent)
     }
     double alto = 0, losa = 0;
     if (!pedirAlturas(parent, un, u("Fachadas"), alto, losa)) return;
+    // Varias plantas en el dibujo: se escoge con un clic adentro.
+    std::vector<std::vector<arq::P>> muros = d.muros;
+    std::vector<arq::VanoCantidad> vanos = d.vanos;
+    const auto plantas = arq::plantasSeparadas(d.muros, un.metros(0.02));
+    if (plantas.size() > 1) {
+        QPointF dentro;
+        if (!doc->getPoint(&dentro, u("Fachadas: hay %1 plantas en el dibujo; clic DENTRO de la planta que quiere").arg(plantas.size())))
+            return;
+        for (const auto &g : plantas) {
+            std::vector<std::vector<arq::P>> m;
+            std::vector<arq::VanoCantidad> v;
+            arq::filtrarPlanta(d.muros, d.vanos, g, m, v, un.metros(0.05));
+            const arq::Rect B = arq::cajaDe(m);
+            if (dentro.x() >= B.x1 && dentro.x() <= B.x2 && dentro.y() >= B.y1 && dentro.y() <= B.y2) {
+                muros = m;
+                vanos = v;
+                break;
+            }
+        }
+    }
     QPointF base;
     if (!doc->getPoint(&base, u("Fachadas: clic donde va la esquina de abajo a la izquierda de la primera fachada")))
         return;
@@ -158,7 +178,7 @@ void DuctusArq::fachadas(Document_Interface *doc, QWidget *parent)
     double x = 0, y = 0, altoFila = 0;
     int n = 0;
     for (arq::Lado l : {arq::Lado::Frente, arq::Lado::Fondo, arq::Lado::Izquierda, arq::Lado::Derecha}) {
-        const arq::Alzado a = arq::fachada(d.muros, d.vanos, l, alto, losa, un.metros(1.0), ingles);
+        const arq::Alzado a = arq::fachada(muros, vanos, l, alto, losa, un.metros(1.0), ingles);
         dibujarAlzado(doc, QPointF(base.x() + x, base.y() + y), a, un);
         altoFila = std::max(altoFila, a.alto);
         x += a.ancho + sep;
@@ -192,7 +212,22 @@ void DuctusArq::cortes(Document_Interface *doc, QWidget *parent)
     if (!doc->getPoint(&p1, u("Corte %1: clic en la planta donde empieza la línea de corte (cruzando los muros)").arg(letra))) return;
     if (!doc->getPoint(&p2, u("Corte %1: clic donde termina la línea de corte").arg(letra), &p1)) return;
     const auto espacios = da::espaciosConForma(doc, un);
-    const arq::Alzado a = arq::corte(d.muros, d.vanos, espacios, arq::P(p1.x(), p1.y()), arq::P(p2.x(), p2.y()),
+    // Varias plantas: la del corte es la que contiene la mitad de la línea.
+    std::vector<std::vector<arq::P>> muros = d.muros;
+    std::vector<arq::VanoCantidad> vanos = d.vanos;
+    const QPointF medio = (p1 + p2) / 2;
+    for (const auto &g : arq::plantasSeparadas(d.muros, un.metros(0.02))) {
+        std::vector<std::vector<arq::P>> m;
+        std::vector<arq::VanoCantidad> v;
+        arq::filtrarPlanta(d.muros, d.vanos, g, m, v, un.metros(0.05));
+        const arq::Rect B = arq::cajaDe(m);
+        if (medio.x() >= B.x1 && medio.x() <= B.x2 && medio.y() >= B.y1 && medio.y() <= B.y2) {
+            muros = m;
+            vanos = v;
+            break;
+        }
+    }
+    const arq::Alzado a = arq::corte(muros, vanos, espacios, arq::P(p1.x(), p1.y()), arq::P(p2.x(), p2.y()),
                                      letra.toStdString(), alto, losa, un.metros(1.0));
     // Línea de corte en la planta, con la letra en cada punta y flechas hacia donde se mira.
     const QString antes = doc->getCurrentLayer();

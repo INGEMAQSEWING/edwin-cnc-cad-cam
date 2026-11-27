@@ -8,6 +8,7 @@
 #include "cantidades.h"
 #include "fachadas.h"
 #include "normas.h"
+#include "escaleras.h"
 
 #include <cstdio>
 
@@ -530,6 +531,17 @@ int main() {
         for (auto &a : av) if (a.nivel == 2 && a.fuente == "FBC-R R304.1") chica = true;
         ok(chica, "normas: alcoba de menos de 70 ft2 (Florida)");
         ok(!esAlcoba("MASTER BATH") && esAlcoba("MASTER SUITE") && esAlcoba("ALCOBA 1"), "normas: qué es alcoba");
+    }
+    {
+        // Escalera de 2.70 m de entrepiso (Colombia) y de 9'-1" (EE. UU.)
+        const CalculoEscalera c = calcularEscalera(2.70, 1.0, 1.0, Sistema::Metrico);
+        ok(c.contrahuellas == 16 && c.contrahuella <= 0.18 && c.huella >= 0.28
+               && std::fabs(2 * c.contrahuella + c.huella - 0.63) < 1e-9 && c.avisos.empty(),
+           "escalera: 16 contrahuellas, NSR-10 (2CH + H = 63 cm)");
+        const CalculoEscalera e = calcularEscalera(109, 30, 1 / 0.0254, Sistema::Imperial);
+        ok(e.contrahuella <= 7.75 + 1e-9 && e.huella >= 10 - 1e-9 && e.avisos.size() == 1, "escalera: IRC y ancho angosto");
+        const PlantaEscalera p = plantaEscalera(P(0, 0), P(0, 5), 1.0, c);
+        ok(p.huellas.size() == 14 && std::fabs(p.contorno[0].b.y - c.largo) < 1e-9, "escalera: planta");
     }
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;

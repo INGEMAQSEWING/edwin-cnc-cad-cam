@@ -283,7 +283,7 @@ def tutorial(miami):
         p.insert_text(pymupdf.Point(40, 112), "Cómo hacer un plano", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 146), "para licencia en Colombia", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 180), "Curaduría urbana · Res. 462/2017 y 1025/2021 · metros", fontsize=11, color=(0.85, 0.9, 1))
-    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.31 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
+    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.33 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
     doc.y = 256
     doc.parrafo("La muestra que vamos a dibujar", fs=13, negrita=True, color=AZUL)
     ref = os.path.join(REF, "ventas.jpeg" if miami else "planta.jpeg")
@@ -449,7 +449,45 @@ def tutorial(miami):
                 fs=8, color=GRIS)
 
     # ---------------------------------------------------------------- Paso 8
-    p = doc.pagina("8. Imprimir y radicar")
+    p = doc.pagina("8. Más herramientas: fachadas, cortes, normas y coordinación")
+    doc.parrafo("Con la planta lista (muros, puertas y ventanas con su alto y antepecho, y espacios con nombre), "
+                "DuctusArq saca lo demás solo. Escriba el comando y Enter.", fs=9.5)
+    herramientas = [
+        ("FAC", "Fachadas", "Dibuja las 4 fachadas desde la planta: muros, losa, puertas y ventanas en su sitio, y niveles. "
+                            "Pide el alto libre de los muros y el espesor de la losa."),
+        ("COR", "Corte", "Clic en la planta donde empieza y termina la línea de corte, y clic donde va el dibujo: muros y "
+                         "losas cortados en negro, ventanas con antepecho y dintel, nombres de espacios y la letra A-A'."),
+        ("ESC", "Escalera", "Calcula los escalones con la norma (" + ("IRC: contrahuella 7 3/4\" o menos, huella 10\" o más"
+                            if miami else "NSR-10: contrahuella 18 cm o menos, huella 28 cm o más, 2CH + H = 63 cm")
+                            + ") y la dibuja en planta con la flecha SUBE."),
+        ("PISO", "Piso siguiente", "Arranca la planta del piso de arriba al lado: copia los muros de fachada, las columnas y "
+                                   "el hueco de la escalera. Luego se dibujan los muros interiores."),
+        ("CIR", "Revisar circulación", "Avisa si a un cuarto solo se llega atravesando otro, si falta la entrada o si el "
+                                       "pasillo queda angosto."),
+        ("NOR", "Revisar normas", ("Florida y Miami-Dade: cuartos de 70 ft² y 7' de lado, ventana de escape en alcobas, "
+                                   "pasillo de 36\", puerta principal, baño con puerta de 29\", NOA en aberturas."
+                                   if miami else "Colombia y Bogotá: puertas, pasillos, ventanas en alcobas y sala, alto "
+                                   "libre y área mínima de la vivienda.") + " Tiene modo 3.ª edad y silla de ruedas."),
+        ("CANT", "Cantidades de obra", "Muros, columnas, pisos por material, cielo raso, pintura, zócalo, puertas y "
+                                       "ventanas: cuadro en el plano y archivo para Excel."),
+        ("SUP", "Superponer plano", "Trae el plano estructural, eléctrico o hidrosanitario (DWG o DXF) encima del "
+                                    "arquitectónico, en su capa y su color, sin mezclar líneas; se prende y se apaga y se "
+                                    "cuadra por una esquina común."),
+        ("CRU", "Revisar cruces", "Marca en rojo las columnas del estructural que caen en una puerta o ventana o que "
+                                  "quedan sueltas dentro de un espacio."),
+        ("PLANT", "Plantilla de oficina", "Guarda las capas, las medidas y los datos del rótulo en un archivo para "
+                                          "cargarlo en los demás computadores: todo el equipo dibuja igual."),
+    ]
+    doc.y += 4
+    for c, n, q in herramientas:
+        doc.comando(c, n)
+        doc.parrafo(q, fs=9, sangria=16)
+        doc.y += 3
+    doc.parrafo("Todos los comandos están en la lista de la derecha del programa (doble clic los ejecuta) y en "
+                "Ayuda > Comandos de DuctusArq.", fs=8.5, color=GRIS)
+
+    # ---------------------------------------------------------------- Paso 9
+    p = doc.pagina("9. Imprimir y radicar")
     doc.pasos(["Archivo > Vista previa de impresión: revise que la escala sea la del rótulo (" + d["ESCALA"] + ").",
                "Archivo > Exportar como PDF" + (": en Miami cada hoja va en un PDF aparte, con nombre en MAYÚSCULAS "
                                                 "(A-102.PDF), vectorial y sin capas." if miami else

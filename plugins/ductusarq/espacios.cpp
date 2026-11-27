@@ -609,10 +609,22 @@ void DuctusArq::cantidadesObra(Document_Interface *doc, QWidget *parent)
             QTextStream s(&f);
             s.setCodec("UTF-8");
             s.setGenerateByteOrderMark(true);
-            s << u("CANTIDADES DE OBRA APROXIMADAS (DuctusArq 2D);alto de muros ") << textoAlto << "\n";
+            // Cada celda entre comillas; las que empiezan como fórmula (=, +, -, @) llevan ' adelante:
+            // las marcas de puertas pueden venir de un dibujo ajeno y Excel no debe ejecutarlas.
+            auto celda = [](QString t) {
+                t.replace(QChar('\r'), QChar(' ')).replace(QChar('\n'), QChar(' '));
+                if (!t.isEmpty() && QString("=+-@\t").contains(t[0])) t.prepend(QChar('\''));
+                t.replace(QChar('"'), u("\"\""));
+                return QChar('"') + t + QChar('"');
+            };
+            s << celda(u("CANTIDADES DE OBRA APROXIMADAS (DuctusArq 2D)")) << ';' << celda(u("alto de muros ") + textoAlto) << "\n";
             for (const QStringList &r : filas) {
-                QStringList x = r;
-                if (m && x.size() == 4) x[3].replace(QChar('.'), QChar(','));  // Excel en español usa coma decimal
+                QStringList x;
+                for (int i = 0; i < r.size(); ++i) {
+                    QString v = r[i];
+                    if (m && i == 3) v.replace(QChar('.'), QChar(','));  // Excel en español usa coma decimal
+                    x << celda(v);
+                }
                 s << x.join(QChar(';')) << "\n";
             }
             s << u("Nota: cantidades aproximadas para presupuesto preliminar; no reemplazan el presupuesto del profesional.\n");
