@@ -78,7 +78,7 @@ static Ej colombia() {
     v(TipoVano::Batiente, P(3.05, 6.80), Y, 0.80, 2.10, 0, 1, true, "P-3");  // pasillo -> alcoba 2
     v(TipoVano::Batiente, P(4.05, 3.30), Y, 0.80, 2.10, 0, 1, false, "P-3"); // pasillo -> baño
     v(TipoVano::Batiente, P(4.05, 6.80), Y, 0.80, 2.10, 0, 1, false, "P-3"); // pasillo -> alcoba principal
-    v(TipoVano::Ventana, P(1.80, 0), X, 1.20, 1.20, 1.00, 0, true, "V-1");   // sala
+    v(TipoVano::Ventana, P(1.60, 0), X, 1.20, 1.20, 1.00, 0, true, "V-1");   // sala (termina antes de la columna del eje 2)
     v(TipoVano::Ventana, P(4.80, 0), X, 1.50, 1.00, 1.10, 0, true, "V-2");   // cocina
     v(TipoVano::Ventana, P(0.90, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba 2
     v(TipoVano::Ventana, P(5.00, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba principal

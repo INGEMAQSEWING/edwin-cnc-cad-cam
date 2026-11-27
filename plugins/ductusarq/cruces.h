@@ -113,9 +113,11 @@ inline std::vector<Cruce> revisarCruces(const std::vector<Columna> &cols, const 
         const std::string n = "Columna " + std::to_string(i + 1);
         const double areaC = (c.x2 - c.x1) * (c.y2 - c.y1);
         bool enVano = false;
+        // Más del 15 % de la columna dentro del vano (rozar la jamba de una boca abierta no cuenta).
         for (const VanoArq &v : vanos)
-            if (solape(crecer(c, -tol), v.r) > 0) {
-                r.push_back({2, m, n + ": cae en la " + (v.marca.rfind("V", 0) == 0 ? "ventana " : "puerta o vano ")
+            if (solape(c, v.r) > 0.15 * areaC) {
+                const bool ventana = v.marca.rfind("V-", 0) == 0;
+                r.push_back({2, m, n + ": cae en " + (ventana ? "la ventana " : v.marca.rfind("VA", 0) == 0 ? "el vano " : "la puerta ")
                                        + v.marca + "."});
                 ++problemas;
                 enVano = true;
