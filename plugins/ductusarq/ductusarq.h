@@ -50,6 +50,12 @@ private:
     // ventas.cpp
     void planoVentas(Document_Interface *doc, QWidget *parent);
     void revisarCirculacion(Document_Interface *doc, QWidget *parent);
+    void cantidadesObra(Document_Interface *doc, QWidget *parent);
+    // fachadas.cpp
+    void fachadas(Document_Interface *doc, QWidget *parent);
+    void cortes(Document_Interface *doc, QWidget *parent);
+    // normas.cpp
+    void revisarNormas(Document_Interface *doc, QWidget *parent);
     // superponer.cpp
     void superponerPlano(Document_Interface *doc, QWidget *parent);
     void revisarCruces(Document_Interface *doc, QWidget *parent);

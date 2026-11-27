@@ -5,6 +5,9 @@
 #include "ventas.h"
 #include "circulacion.h"
 #include "cruces.h"
+#include "cantidades.h"
+#include "fachadas.h"
+#include "normas.h"
 
 #include <cstdio>
 
@@ -456,6 +459,77 @@ int main() {
         ok(cr.size() == 1 && cr[0].nivel == 1, "cruces: sin columnas avisa");
         cols = detectarColumnas({}, {{P(2, 2), 0.15}}, 0.15, 1.5);
         ok(cols.size() == 1, "cruces: columna redonda");
+    }
+    {
+        // Cantidades: cuarto de 4 x 3 (adentro) con muros de 0.10, una puerta de 0.90 x 2.10 y una
+        // ventana de 1.20 x 1.20; una columna de 0.25; muro de 2.40 de alto.
+        std::vector<std::vector<P>> muros{esquinas(rect(-0.1, -0.1, 4.1, 0)), esquinas(rect(-0.1, 3, 4.1, 3.1)),
+                                          esquinas(rect(-0.1, 0, 0, 3)), esquinas(rect(4, 0, 4.1, 3)),
+                                          esquinas(rect(4.1, 3.1, 4.35, 3.35))};
+        auto vano = [](const char *marca, const char *tipo, P o, double ancho, double alto, double ante) {
+            VanoCantidad v;
+            v.marca = marca; v.tipo = tipo; v.alto = alto; v.antepecho = ante;
+            v.v.o = o; v.v.dir = P(1, 0); v.v.n = P(0, 1); v.v.ancho = ancho; v.v.espesor = 0.1;
+            return v;
+        };
+        std::vector<VanoCantidad> vanos{vano("P-1", "BATIENTE", P(0.5, -0.1), 0.9, 2.1, 0),
+                                        vano("V-1", "VENTANA", P(2.0, 3.0), 1.2, 1.2, 1.0)};
+        std::vector<EspacioVentas> esp{{"ALCOBA", P(2, 1.5), {rect(0, 0, 4, 3)}, 12}};
+        const Cantidades c = calcularCantidades(muros, vanos, esp, 2.4, 1.0);
+        ok(c.columnas == 1 && std::fabs(c.largoMuros - (4.2 + 4.2 + 3 + 3)) < 1e-6, "cantidades: muros y columna");
+        ok(std::fabs(c.areaVanosEnMuros - (0.9 * 2.1 + 1.2 * 1.2)) < 1e-6 && c.puertasPorMarca.at("P-1") == 1
+               && c.ventanasPorMarca.at("V-1") == 1 && std::fabs(c.areaVidrio - 1.44) < 1e-6, "cantidades: puertas y ventanas");
+        ok(std::fabs(c.areaPisos - 12) < 1e-6 && std::fabs(c.cieloRaso - 12) < 1e-6, "cantidades: piso y cielo raso");
+        // Pintura: perímetro 14 x 2.4 = 33.6 menos puerta 1.89 y ventana 1.44 = 30.27; zócalo 14 - 0.9.
+        ok(std::fabs(c.pintura - 30.27) < 1e-6 && std::fabs(c.zocalo - 13.1) < 1e-6, "cantidades: pintura y zócalo");
+    }
+    {
+        // Fachadas y cortes: cuarto de 4 x 3 con puerta al frente y ventana atrás.
+        std::vector<std::vector<P>> muros{esquinas(rect(-0.1, -0.1, 4.1, 0)), esquinas(rect(-0.1, 3, 4.1, 3.1)),
+                                          esquinas(rect(-0.1, 0, 0, 3)), esquinas(rect(4, 0, 4.1, 3))};
+        auto vano = [](const char *tipo, P o, double ancho, double alto, double ante) {
+            VanoCantidad v;
+            v.marca = "X"; v.tipo = tipo; v.alto = alto; v.antepecho = ante;
+            v.v.o = o; v.v.dir = P(1, 0); v.v.n = P(0, 1); v.v.ancho = ancho; v.v.espesor = 0.1;
+            return v;
+        };
+        std::vector<VanoCantidad> vanos{vano("BATIENTE", P(0.5, -0.1), 0.9, 2.1, 0), vano("VENTANA", P(2.0, 3.0), 1.2, 1.2, 1.0)};
+        Alzado f = fachada(muros, vanos, Lado::Frente, 2.4, 0.15, 1.0);
+        ok(std::fabs(f.ancho - 4.2) < 1e-9 && !f.puertas.empty() && f.ventanas.empty() && f.niveles.size() == 3,
+           "fachada: frente con la puerta y sin la ventana de atrás");
+        Alzado b = fachada(muros, vanos, Lado::Fondo, 2.4, 0.15, 1.0);
+        bool ventanaBien = false;  // la ventana va de 2.0 a 3.2 en planta; vista desde atrás: de 0.9 a 2.1
+        for (const Seg &s : b.ventanas) if (std::fabs(std::min(s.a.x, s.b.x) - 0.9) < 1e-9 && std::fabs(s.a.y - 1.0) < 1e-9) ventanaBien = true;
+        ok(ventanaBien, "fachada: ventana de atrás en su lugar (vista desde atrás)");
+        std::vector<EspacioVentas> esp{{"SALA", P(2, 1.5), {rect(0, 0, 4, 3)}, 12}};
+        Alzado c = corte(muros, vanos, esp, P(-1, 1.5), P(5, 1.5), "A", 2.4, 0.15, 1.0);
+        // Losa + contrapiso + 2 muros cortados (izquierda y derecha)
+        ok(c.cortado.size() == 4 && c.textos.size() == 1 && c.textos[0].second == "SALA", "corte: muros, losas y nombre");
+        Alzado d = corte(muros, vanos, esp, P(2.6, -1), P(2.6, 4), "B", 2.4, 0.15, 1.0);
+        // Cruza el muro de atrás por la ventana (queda antepecho y dintel) y el de adelante entero.
+        ok(d.cortado.size() == 2 + 1 + 2 && !d.vidrio.empty(), "corte: ventana cortada con antepecho y dintel");
+    }
+    {
+        // Normas: alcoba de 3 x 3 sin ventana y con puerta de 0.60 (Colombia), y en EE. UU. alcoba pequeña.
+        auto puerta = [](P o, double ancho) {
+            VanoNorma v;
+            v.c.marca = "P-9"; v.c.tipo = "BATIENTE"; v.c.alto = 2.1;
+            v.c.v.o = o; v.c.v.dir = P(1, 0); v.c.v.n = P(0, 1); v.c.v.ancho = ancho; v.c.v.espesor = 0.1;
+            return v;
+        };
+        std::vector<EspacioVentas> esp{{"ALCOBA 9", P(1.5, 1.5), {rect(0, 0, 3, 3)}, 9}};
+        auto av = revisarNormas(esp, {puerta(P(1, -0.1), 0.60)}, 2.4, 1.0, Norma::Colombia, false);
+        bool puertaMal = false, sinVentana = false;
+        for (auto &a : av) {
+            if (a.nivel == 2 && a.texto.find("P-9") != std::string::npos) puertaMal = true;
+            if (a.nivel == 2 && a.texto.find("no tiene ventana") != std::string::npos) sinVentana = true;
+        }
+        ok(puertaMal && sinVentana, "normas: puerta angosta y alcoba sin ventana (Colombia)");
+        av = revisarNormas({{"BEDROOM 9", P(1, 1), {rect(0, 0, 2, 2)}, 4}}, {}, 2.4, 1.0, Norma::Florida, false);
+        bool chica = false;
+        for (auto &a : av) if (a.nivel == 2 && a.fuente == "FBC-R R304.1") chica = true;
+        ok(chica, "normas: alcoba de menos de 70 ft2 (Florida)");
+        ok(!esAlcoba("MASTER BATH") && esAlcoba("MASTER SUITE") && esAlcoba("ALCOBA 1"), "normas: qué es alcoba");
     }
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;

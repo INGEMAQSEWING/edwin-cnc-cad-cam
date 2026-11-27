@@ -17,6 +17,18 @@
 #include "ductusarq.h"
 #include "comun.h"
 #include "ventas.h"
+#include "cantidades.h"
+
+#include <QDateTime>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QTextStream>
+#include <QUrl>
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -511,3 +523,110 @@ std::vector<arq::EspacioVentas> espaciosConForma(Document_Interface *doc, const 
     return r;
 }
 } // namespace da
+
+// ---------------------------------------------------------------------------
+// CANTIDADES DE OBRA (aproximadas, para presupuesto preliminar): cuadro en el plano y archivo
+// para Excel (CSV) en Documentos/DuctusArq/Cantidades.
+void DuctusArq::cantidadesObra(Document_Interface *doc, QWidget *parent)
+{
+    const arq::Unidades un = da::unidades();
+    const bool m = un.sistema == arq::Sistema::Metrico;
+    std::vector<std::vector<arq::P>> muros;
+    for (const QString &t : leerDatos(doc, "DUCTUS-MURO|")) {
+        std::vector<arq::P> pol;
+        if (arq::leerDatoMuro(t.toStdString(), pol)) muros.push_back(pol);
+    }
+    if (muros.empty()) {
+        QMessageBox::information(parent, u("Cantidades de obra"),
+                                 u("El dibujo no tiene muros de DuctusArq. Dibuje con «Casa rápida» (CASA) o «Muro» (MU), "
+                                   "las puertas y ventanas con PUE y los espacios con ESP."));
+        return;
+    }
+    std::vector<arq::VanoCantidad> vanos;
+    for (const QString &t : leerDatos(doc, "DUCTUS-VANO|")) {
+        arq::DatoVano d;
+        arq::VanoCantidad v;
+        if (!arq::leerDatoVano(t.toStdString(), d) || !arq::vanoDeDato(t.toStdString(), v.v)) continue;
+        v.marca = d.marca;
+        v.tipo = d.tipo;
+        v.alto = d.alto;
+        v.antepecho = d.antepecho;
+        vanos.push_back(v);
+    }
+    const std::vector<arq::EspacioVentas> espacios = da::espaciosConForma(doc, un);
+
+    QSettings cfg;
+    bool okAlto = false;
+    const QString textoAlto = QInputDialog::getText(
+        parent, u("Cantidades de obra"), u("Alto libre de los muros (del piso al cielo raso):"), QLineEdit::Normal,
+        cfg.value(m ? "DuctusArq/cantAltoM" : "DuctusArq/cantAltoIn", m ? u("2.40") : u("8'-0\"")).toString(), &okAlto);
+    if (!okAlto) return;
+    double alto = 0;
+    if (!arq::leerLongitud(textoAlto.toStdString(), un.sistema, alto) || alto <= 0) {
+        QMessageBox::warning(parent, u("Cantidades de obra"), u("No entendí el alto «%1».").arg(textoAlto));
+        return;
+    }
+    cfg.setValue(m ? "DuctusArq/cantAltoM" : "DuctusArq/cantAltoIn", textoAlto);
+
+    const arq::Cantidades c = arq::calcularCantidades(muros, vanos, espacios, alto, un.metros(1.0));
+    auto L = [&](double v) { return m ? QString::number(v, 'f', 2) : QString::number(v / 12.0, 'f', 1); };
+    auto A = [&](double v) { return m ? QString::number(v, 'f', 2) : QString::number(v / 144.0, 'f', 1); };
+    auto V = [&](double v) { return m ? QString::number(v, 'f', 2) : QString::number(v / 1728.0, 'f', 1); };
+    const QString uL = m ? u("m") : u("ft"), uA = m ? u("m²") : u("ft²"), uV = m ? u("m³") : u("ft³");
+    const QString und = u("und");
+
+    std::vector<QStringList> filas;
+    filas.push_back({u("CAPÍTULO"), u("ÍTEM"), u("UNIDAD"), u("CANTIDAD")});
+    filas.push_back({u("MUROS"), u("Largo de muros (aprox.)"), uL, L(c.largoMuros)});
+    filas.push_back({u("MUROS"), u("Muro (una cara, sin vanos)"), uA, A(c.areaMurosNeta)});
+    filas.push_back({u("MUROS"), u("Volumen de muros"), uV, V(c.volumenMuros)});
+    if (c.columnas > 0) {
+        filas.push_back({u("ESTRUCTURA"), u("Columnas"), und, QString::number(c.columnas)});
+        filas.push_back({u("ESTRUCTURA"), u("Concreto de columnas (al alto del muro)"), uV, V(c.volumenColumnas)});
+    }
+    for (const auto &p : c.pisoPorMaterial)
+        filas.push_back({u("PISOS"), QString::fromStdString(p.first), uA, A(p.second)});
+    filas.push_back({u("PISOS"), u("Total pisos"), uA, A(c.areaPisos)});
+    filas.push_back({u("ACABADOS"), u("Cielo raso"), uA, A(c.cieloRaso)});
+    filas.push_back({u("ACABADOS"), u("Pintura de muros interiores"), uA, A(c.pintura)});
+    if (c.enchapeBanos > 0)
+        filas.push_back({u("ACABADOS"), u("Enchape de muros de baños (hasta el techo)"), uA, A(c.enchapeBanos)});
+    filas.push_back({u("ACABADOS"), u("Zócalo / guardaescoba"), uL, L(c.zocalo)});
+    for (const auto &p : c.puertasPorMarca)
+        filas.push_back({u("CARPINTERÍA"), u("Puerta %1").arg(QString::fromStdString(p.first)), und, QString::number(p.second)});
+    for (const auto &p : c.ventanasPorMarca)
+        filas.push_back({u("CARPINTERÍA"), u("Ventana %1").arg(QString::fromStdString(p.first)), und, QString::number(p.second)});
+    if (c.areaVidrio > 0) filas.push_back({u("CARPINTERÍA"), u("Vidrio de ventanas"), uA, A(c.areaVidrio)});
+
+    // Archivo para Excel (punto y coma; con BOM para que Excel lea las tildes).
+    const QString carpeta = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+                            + u("/DuctusArq/Cantidades/") + QDateTime::currentDateTime().toString(u("yyyy-MM-dd_HH-mm-ss"));
+    QDir().mkpath(carpeta);
+    const QString csv = carpeta + u("/cantidades_de_obra.csv");
+    {
+        QFile f(csv);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            QTextStream s(&f);
+            s.setCodec("UTF-8");
+            s.setGenerateByteOrderMark(true);
+            s << u("CANTIDADES DE OBRA APROXIMADAS (DuctusArq 2D);alto de muros ") << textoAlto << "\n";
+            for (const QStringList &r : filas) {
+                QStringList x = r;
+                if (m && x.size() == 4) x[3].replace(QChar('.'), QChar(','));  // Excel en español usa coma decimal
+                s << x.join(QChar(';')) << "\n";
+            }
+            s << u("Nota: cantidades aproximadas para presupuesto preliminar; no reemplazan el presupuesto del profesional.\n");
+        }
+    }
+
+    QPointF base;
+    if (doc->getPoint(&base, u("Cantidades de obra: clic en la esquina de arriba a la izquierda del cuadro"))) {
+        tabla(doc, base, u("CANTIDADES DE OBRA (APROXIMADAS)"), {30, 78, 16, 22}, filas, un);
+        doc->updateView();
+    }
+    if (QMessageBox::question(parent, u("Cantidades de obra"),
+                              u("Listo. También quedó el archivo para Excel:\n%1\n\n¿Abrir la carpeta?")
+                                  .arg(QDir::toNativeSeparators(csv)))
+        == QMessageBox::Yes)
+        QDesktopServices::openUrl(QUrl::fromLocalFile(carpeta));
+}

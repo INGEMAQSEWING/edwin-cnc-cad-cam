@@ -47,6 +47,10 @@ const char *CMD_RENDER = "Render de la planta amoblada (3D con Blender)...";
 const char *CMD_CIRCULACION = "Revisar circulación (pasillos y puertas)";
 const char *CMD_SUPERPONER = "Superponer plano (estructural, eléctrico, sanitario)...";
 const char *CMD_CRUCES = "Revisar cruces con el estructural";
+const char *CMD_CANTIDADES = "Cantidades de obra (presupuesto preliminar)...";
+const char *CMD_FACHADAS = "Fachadas (desde la planta)...";
+const char *CMD_CORTE = "Corte (marcar la línea en la planta)...";
+const char *CMD_NORMAS = "Revisar normas (Colombia, Bogotá, Florida, Miami-Dade)...";
 const char *CMD_VENTAS = "Plano de ventas a color (folleto y redes)...";
 const char *CMD_TUT_CO = "Tutorial: plano para Colombia (PDF)";
 const char *CMD_TUT_MIA = "Tutorial: plano para Miami (PDF)";
@@ -85,7 +89,7 @@ PluginCapabilities DuctusArq::getCapabilities() const
     PluginCapabilities pc;
     if (!esDuctusArq()) return pc;  // en EDWIN CNC CAD-CAM / CAD2CAM no se muestra
     for (const char *c : {CMD_CASA, CMD_EJES, CMD_COLUMNAS, CMD_MURO, CMD_VANO, CMD_ESPACIO, CMD_CUADRO_VANOS,
-                          CMD_CUADRO_AREAS, CMD_CIRCULACION, CMD_SUPERPONER, CMD_CRUCES, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_VENTAS, CMD_RENDER, CMD_PORTICO,
+                          CMD_CUADRO_AREAS, CMD_FACHADAS, CMD_CORTE, CMD_CANTIDADES, CMD_CIRCULACION, CMD_NORMAS, CMD_SUPERPONER, CMD_CRUCES, CMD_MOBILIARIO, CMD_ELECTRO, CMD_SANITARIOS, CMD_VENTAS, CMD_RENDER, CMD_PORTICO,
                           CMD_CIMENTACION, CMD_ROTULO, CMD_MEDIDAS, CMD_CAPAS, CMD_TUT_CO, CMD_TUT_MIA,
                           CMD_COMANDOS, CMD_ACERCA})
         pc.menuEntryPoints << PluginMenuLocation(MENU, u(c));
@@ -110,6 +114,10 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
     else if (cmd == u(CMD_RENDER)) renderPlanta(doc, parent);
     else if (cmd == u(CMD_VENTAS)) planoVentas(doc, parent);
     else if (cmd == u(CMD_CIRCULACION)) revisarCirculacion(doc, parent);
+    else if (cmd == u(CMD_CANTIDADES)) cantidadesObra(doc, parent);
+    else if (cmd == u(CMD_NORMAS)) revisarNormas(doc, parent);
+    else if (cmd == u(CMD_FACHADAS)) fachadas(doc, parent);
+    else if (cmd == u(CMD_CORTE)) cortes(doc, parent);
     else if (cmd == u(CMD_SUPERPONER)) superponerPlano(doc, parent);
     else if (cmd == u(CMD_CRUCES)) revisarCruces(doc, parent);
     else if (cmd == u(CMD_TUT_CO) || cmd == u(CMD_TUT_MIA)) {
@@ -143,6 +151,10 @@ void DuctusArq::execComm(Document_Interface *doc, QWidget *parent, QString cmd)
             "<tr><td>Área de un espacio (clic adentro)</td><td>ESP · ESPACIO</td></tr>"
             "<tr><td>Cuadro de puertas y ventanas</td><td>CV · CUADROVANOS</td></tr>"
             "<tr><td>Cuadro de áreas e índices</td><td>CA · AREAS · CUADROAREAS</td></tr>"
+            "<tr><td>Fachadas desde la planta</td><td>FAC · FACHADAS</td></tr>"
+            "<tr><td>Corte (marcar la línea en la planta)</td><td>COR · CORTE</td></tr>"
+            "<tr><td>Revisar normas (Colombia, Bogotá, Florida, Miami-Dade)</td><td>NOR · NORMAS</td></tr>"
+            "<tr><td>Cantidades de obra (cuadro y archivo para Excel)</td><td>CANT · CANTIDADES</td></tr>"
             "<tr><td>Revisar circulación (pasillos y puertas)</td><td>CIR · CIRCULACION</td></tr>"
             "<tr><td>Superponer plano de otra especialidad (DWG o DXF)</td><td>SUP · SUPERPONER</td></tr>"
             "<tr><td>Revisar cruces con el estructural</td><td>CRU · CRUCES</td></tr>"
