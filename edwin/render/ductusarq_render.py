@@ -449,11 +449,26 @@ for i, p in enumerate(datos.get("muebles", [])):
         mat = TAPETES[0]
     else:
         continue
-    raiz = bpy.data.objects.new(f"Tapete{i}", None)
-    escena.collection.objects.link(raiz)
-    raiz.location = (float(p["x"]) * K, float(p["y"]) * K, 0)
-    raiz.rotation_euler.z = math.radians(float(p.get("grados", 0)))
-    caja(f"TapeteTela{i}", 0, adelante, tw, tf, 0.004, 0.008, mat, raiz)
+    # El tapete no se sale del cuarto: se recorta a la caja del espacio donde está el mueble.
+    tg = math.radians(float(p.get("grados", 0)))
+    tcx = float(p["x"]) * K - math.sin(tg) * adelante
+    tcy = float(p["y"]) * K + math.cos(tg) * adelante
+    if round(float(p.get("grados", 0))) % 180 == 90:
+        tw, tf = tf, tw
+    tx1, ty1, tx2, ty2 = tcx - tw / 2, tcy - tf / 2, tcx + tw / 2, tcy + tf / 2
+    mx, my = float(p["x"]) * K, float(p["y"]) * K
+    for e in ESPACIOS:
+        cel = e.get("celdas") or []
+        if any(a * K <= mx <= c * K and b * K <= my <= d * K for a, b, c, d in cel):
+            bx1 = min(a for a, b, c, d in cel) * K + 0.05
+            by1 = min(b for a, b, c, d in cel) * K + 0.05
+            bx2 = max(c for a, b, c, d in cel) * K - 0.05
+            by2 = max(d for a, b, c, d in cel) * K - 0.05
+            tx1, ty1, tx2, ty2 = max(tx1, bx1), max(ty1, by1), min(tx2, bx2), min(ty2, by2)
+            break
+    if tx2 - tx1 < 0.3 or ty2 - ty1 < 0.3:
+        continue
+    caja(f"TapeteTela{i}", (tx1 + tx2) / 2, (ty1 + ty2) / 2, tx2 - tx1, ty2 - ty1, 0.004, 0.008, mat)
 
 
 def planta(nombre, x, y, alto=1.05):

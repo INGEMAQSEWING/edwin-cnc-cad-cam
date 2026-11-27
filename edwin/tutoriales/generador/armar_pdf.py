@@ -283,7 +283,7 @@ def tutorial(miami):
         p.insert_text(pymupdf.Point(40, 112), "Cómo hacer un plano", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 146), "para licencia en Colombia", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 180), "Curaduría urbana · Res. 462/2017 y 1025/2021 · metros", fontsize=11, color=(0.85, 0.9, 1))
-    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.26 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
+    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.28 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
     doc.y = 256
     doc.parrafo("La muestra que vamos a dibujar", fs=13, negrita=True, color=AZUL)
     ref = os.path.join(REF, "ventas.jpeg" if miami else "planta.jpeg")
