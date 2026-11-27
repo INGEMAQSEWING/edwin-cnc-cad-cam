@@ -3764,7 +3764,7 @@ void QC_ApplicationWindow::showAboutWindow()
     auto layout = new QVBoxLayout;
     dlg.setLayout(layout);
 
-    auto frame = new QGroupBox("EDWIN CNC CAD/CAM");
+    auto frame = new QGroupBox(edwin::esDuctusArq() ? "DuctusArq 2D" : "EDWIN CNC CAD/CAM");
     layout->addWidget(frame);
 
     auto f_layout = new QVBoxLayout;
@@ -3775,9 +3775,14 @@ void QC_ApplicationWindow::showAboutWindow()
 
     QString info
     (
-        QString("EDWIN CNC CAD/CAM 1.0") + "\n" +
-        QString::fromUtf8("© 2026 EDWIN CNC — Edwin Xabier Segura Valencia (Cúcuta, Colombia)") + "\n" +
-        QString::fromUtf8("Propietario de la marca y autor de las funciones nuevas y mejoras para corte por plasma.") + "\n" +
+        (edwin::esDuctusArq()
+            ? QString::fromUtf8("DuctusArq 2D · Suite OpenDuctus") + "\n" +
+              QString::fromUtf8("© 2026 EDWIN CNC (Cúcuta, Colombia)") + "\n" +
+              QString::fromUtf8("Diseño arquitectónico: planos, planos de ventas y render 3D.") + "\n" +
+              QString::fromUtf8("Normas de Colombia (NSR-10, ICONTEC) y EE. UU. (Florida, Miami-Dade).") + "\n"
+            : QString("EDWIN CNC CAD/CAM 1.0") + "\n" +
+              QString::fromUtf8("© 2026 EDWIN CNC — Edwin Xabier Segura Valencia (Cúcuta, Colombia)") + "\n" +
+              QString::fromUtf8("Propietario de la marca y autor de las funciones nuevas y mejoras para corte por plasma.") + "\n") +
         QString("Basado en LibreCAD %1 (software libre GPLv2)").arg(XSTR(LC_VERSION)) + "\n" +
         #if defined(Q_CC_CLANG)
             tr("Compiler: Clang %1.%2.%3").arg(__clang_major__).arg(__clang_minor__).arg(__clang_patchlevel__) + "\n" +

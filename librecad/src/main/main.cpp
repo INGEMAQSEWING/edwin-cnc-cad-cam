@@ -266,7 +266,8 @@ int main(int argc, char** argv)
 
     if (show_splash)
     {
-        QPixmap pixmap(":/main/splash_librecad.png");
+        // DuctusArq 2D tiene su propia pantalla de carga (arquitectura, no plasma).
+        QPixmap pixmap(edwin::esDuctusArq() ? ":/main/splash_ductusarq.png" : ":/main/splash_librecad.png");
         splash->setPixmap(pixmap);
         splash->setAttribute(Qt::WA_DeleteOnClose);
         splash->show();

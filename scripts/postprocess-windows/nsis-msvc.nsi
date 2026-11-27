@@ -58,7 +58,9 @@ SetCompressor /SOLID lzma
     !define TITULO "DuctusArq 2D"
     !define PROGID "DuctusArq2D"
     !define EXTRA_BIENVENIDA ""
-    !define TEXTO_PROGRAMA "Programa de planos de arquitectura e ingeniería de la suite OpenDuctus: ejes, muros, columnas, pórticos, cimentación, cotas y rótulo por especialidad, en metros o en pies y pulgadas. Abre y guarda DXF; abre DWG."
+    !define TEXTO_PROGRAMA "Programa de diseño arquitectónico de la suite OpenDuctus: planos para licencia o permiso, planos de ventas a color y render 3D de la planta amoblada. Con normas técnicas de Colombia (NSR-10, ICONTEC) y de EE. UU. (Florida Building Code, Miami-Dade), en metros o en pies y pulgadas; en camino otras de Latinoamérica como COVENIN, NOM e INN. Abre y guarda DXF; abre DWG."
+    !define IMAGEN_LADO "instalador-lado-ductusarq.bmp"
+    !define CREDITOS "creditos-ductusarq.rtf"
 !else ifdef CAD2CAM
     !ifdef APPNAME
         !undef APPNAME
@@ -77,6 +79,12 @@ SetCompressor /SOLID lzma
     !define TITULO "EDWIN CNC CAD/CAM"
     !define PROGID "EdwinCNC"
     !define EXTRA_BIENVENIDA ""
+!endif
+!ifndef IMAGEN_LADO
+    !define IMAGEN_LADO "instalador-lado.bmp"
+!endif
+!ifndef CREDITOS
+    !define CREDITOS "creditos.rtf"
 !endif
 !ifndef TEXTO_PROGRAMA
     !define TEXTO_PROGRAMA "Programa de dibujo 2D para preparar cortes en mesas CNC de plasma: dibuja o abre archivos DXF, organiza las piezas en capas de corte, revísalas y genera el código G para Mach3."
@@ -148,8 +156,8 @@ FunctionEnd
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${EXE}"
 ; Imagen de EDWIN CNC en Bienvenida/Final (164x314) y en el encabezado (150x57): edwin/instalador_imagenes.py.
-!define MUI_WELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
-!define MUI_UNWELCOMEFINISHPAGE_BITMAP "instalador-lado.bmp"
+!define MUI_WELCOMEFINISHPAGE_BITMAP "${IMAGEN_LADO}"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "${IMAGEN_LADO}"
 !define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_BITMAP "instalador-encabezado.bmp"
 !define MUI_HEADERIMAGE_RIGHT
@@ -167,7 +175,7 @@ FunctionEnd
 !define MUI_LICENSEPAGE_TEXT_TOP "Quién hace ${TITULO}:"
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "EDWIN CNC agrega funciones nuevas y mejora el programa en cada versión."
 !define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
-!insertmacro MUI_PAGE_LICENSE "creditos.rtf"
+!insertmacro MUI_PAGE_LICENSE "${CREDITOS}"
 
 ; 3) Licencia GPL (obligatoria, no se modifica: es la condición para usar LibreCAD como base).
 !define MUI_LICENSEPAGE_TEXT_TOP "Licencia de software libre (GPL v2): puedes usar, copiar y compartir este programa. Texto oficial en inglés:"
