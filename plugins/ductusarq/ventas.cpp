@@ -21,6 +21,7 @@
 #include "ductusarq.h"
 #include "comun.h"
 #include "ventas.h"
+#include "circulacion.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -277,6 +278,15 @@ void DuctusArq::planoVentas(Document_Interface *doc, QWidget *parent)
                      "sale con su color de piso y sus medidas.");
     else if (sinForma > 0)
         resumen += u("<br>%1 espacio(s) no están cerrados por muros: salen con el nombre pero sin color de piso.").arg(sinForma);
+    {   // Un plano de ventas no debería salir con cuartos encadenados (alcoba dentro de alcoba).
+        const double metro = un.metros(1.0);
+        int malos = 0;
+        for (const auto &x : arq::revisarCirculacion(espacios, vanos, metro, un.metros(imperial ? 0.9144 : 0.90)))
+            if (x.nivel == 2) ++malos;
+        if (malos > 0 && !espacios.empty())
+            resumen += u("<br><br><span style='color:#b00020'><b>Ojo con la circulación:</b> %1 problema(s), por ejemplo "
+                         "un cuarto al que solo se llega atravesando otro. Escriba <b>CIR</b> para verlos.</span>").arg(malos);
+    }
     auto nota = new QLabel(resumen);
     nota->setWordWrap(true);
     nota->setMinimumWidth(460);
@@ -371,4 +381,48 @@ void DuctusArq::planoVentas(Document_Interface *doc, QWidget *parent)
     }
     QDesktopServices::openUrl(QUrl::fromLocalFile(carpeta));
     QDesktopServices::openUrl(QUrl::fromLocalFile(carpeta + u("/plano_ventas.png")));
+}
+
+// ---------------------------------------------------------------------------
+// REVISAR CIRCULACIÓN: desde la puerta de entrada, ¿se llega a cada espacio sin atravesar una
+// alcoba o un baño? ¿Los pasillos tienen el ancho mínimo?
+void DuctusArq::revisarCirculacion(Document_Interface *doc, QWidget *parent)
+{
+    const arq::Unidades un = da::unidades();
+    const bool imperial = un.sistema == arq::Sistema::Imperial;
+    std::vector<arq::Vano> vanos;
+    for (const QString &t : da::leerDatos(doc, "DUCTUS-VANO|")) {
+        arq::Vano v;
+        if (arq::vanoDeDato(t.toStdString(), v)) vanos.push_back(v);
+    }
+    const std::vector<arq::EspacioVentas> espacios = da::espaciosConForma(doc, un);
+    if (espacios.empty() || vanos.empty()) {
+        QMessageBox::information(parent, u("Revisar circulación"),
+                                 u("Para revisar la circulación hacen falta las puertas («Puerta / ventana», PUE) y el "
+                                   "nombre de cada espacio («Área de un espacio», ESP), incluido el PASILLO o HALL."));
+        return;
+    }
+    // Pasillo mínimo: 0.90 m (práctica en Colombia y paso de silla de ruedas); 36" en EE. UU. (IRC R311.6).
+    const double minimo = un.metros(imperial ? 0.9144 : 0.90);
+    const auto avisos = arq::revisarCirculacion(espacios, vanos, un.metros(1.0), minimo);
+    QString html = u("<p>Revisé %1 espacio(s) y %2 puerta(s)/vano(s) desde la puerta de entrada. A las alcobas, baños y "
+                     "closets se debe llegar por la sala, el comedor, la cocina o un pasillo, sin atravesar otro cuarto.</p><ul>")
+                       .arg(espacios.size()).arg(vanos.size());
+    int malos = 0;
+    for (const auto &x : avisos) {
+        const char *color = x.nivel == 2 ? "#b00020" : x.nivel == 1 ? "#a06000" : "#1b7a3a";
+        const QString que = x.nivel == 2 ? u("PROBLEMA") : x.nivel == 1 ? u("REVISAR") : u("BIEN");
+        if (x.nivel == 2) ++malos;
+        html += u("<li><span style='color:%1'><b>%2:</b></span> %3</li>").arg(color, que,
+                                                                            QString::fromStdString(x.texto).toHtmlEscaped());
+    }
+    html += u("</ul>");
+    if (malos > 0)
+        html += u("<p><b>Cómo se arregla:</b> deje un pasillo (en «Casa rápida» escriba el ancho en «Pasillo») o mueva "
+                  "las puertas para que cada cuarto abra a la sala, al comedor o al pasillo. Nombre el pasillo con ESP "
+                  "como PASILLO o HALL.</p>");
+    QMessageBox box(malos > 0 ? QMessageBox::Warning : QMessageBox::Information, u("Revisar circulación"), html,
+                    QMessageBox::Ok, parent);
+    box.setTextFormat(Qt::RichText);
+    box.exec();
 }

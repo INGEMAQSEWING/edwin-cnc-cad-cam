@@ -3,6 +3,7 @@
 #include "arq.h"
 #include "muebles.h"
 #include "ventas.h"
+#include "circulacion.h"
 
 #include <cstdio>
 
@@ -370,6 +371,59 @@ int main() {
         OpcionesVentas op;
         const Lamina L = planoVentas(muros, {}, {e}, {}, op, Sistema::Metrico);
         ok(!L.vacia() && L.textos.size() == 2 && L.textos[1].texto == "4.00 x 3.00 m", "ventas: lámina con nombre y medidas");
+    }
+    {
+        // Casa con pasillo: 4 muros exteriores + 2 del pasillo + 2 tramos por cada división a lo largo.
+        Casa c;
+        c.ancho = 7; c.largo = 10; c.divX = {3.0}; c.divY = {3.0, 6.5}; c.pasillo = 1.0;
+        auto g = casaGeom(c);
+        ok(g.muros.size() == 10 && g.ejesX.size() == 4 && std::fabs(g.ejesX[2] - 4.1) < 1e-9, "pasillo: muros y ejes");
+        c.pasillo = 9;  // no cabe: queda la casa normal
+        g = casaGeom(c);
+        ok(g.muros.size() == 7 && g.ejesX.size() == 3, "pasillo: si no cabe, casa sin pasillo");
+    }
+    {
+        auto puerta = [](P o, P dir, P n, double ancho, double esp) {
+            Vano v; v.tipo = TipoVano::Batiente; v.o = o; v.dir = dir; v.n = n; v.ancho = ancho; v.espesor = esp;
+            return v;
+        };
+        const P X(1, 0), Y(0, 1);
+        // Diseño encadenado (el error del ejemplo viejo): sala -> alcoba 1 -> alcoba 2.
+        std::vector<EspacioVentas> e{{"SALA", P(), {rect(0.15, 0.15, 3.35, 2.95)}, 0},
+                                     {"ALCOBA 1", P(), {rect(0.15, 3.05, 3.35, 6.45)}, 0},
+                                     {"ALCOBA 2", P(), {rect(0.15, 6.55, 3.35, 9.85)}, 0}};
+        std::vector<Vano> v{puerta(P(0.6, 0), X, Y, 0.9, 0.15), puerta(P(1.2, 2.95), X, Y, 0.8, 0.1),
+                            puerta(P(1.2, 6.45), X, Y, 0.8, 0.1)};
+        auto av = revisarCirculacion(e, v, 1.0, 0.9);
+        bool encadenado = false;
+        for (auto &a : av) if (a.nivel == 2 && a.texto.find("ALCOBA 2") != std::string::npos
+                               && a.texto.find("pasar por \xC2\xAB" "ALCOBA 1") != std::string::npos) encadenado = true;
+        ok(encadenado, "circulación: avisa que a la alcoba 2 se pasa por la alcoba 1");
+        // Con pasillo: cada alcoba da al pasillo.
+        e = {{"SALA", P(), {rect(0.15, 0.15, 4.45, 2.95)}, 0},
+             {"PASILLO", P(), {rect(3.5, 2.95, 4.4, 9.85)}, 0},
+             {"ALCOBA 1", P(), {rect(0.15, 3.05, 3.4, 6.45)}, 0},
+             {"ALCOBA 2", P(), {rect(0.15, 6.55, 3.4, 9.85)}, 0},
+             {"BA\xC3\x91O", P(), {rect(4.5, 3.05, 6.85, 6.45)}, 0}};
+        v = {puerta(P(0.6, 0), X, Y, 0.9, 0.15), puerta(P(3.5, 4.0), Y, P(-1, 0), 0.8, 0.1),
+             puerta(P(3.5, 7.0), Y, P(-1, 0), 0.8, 0.1), puerta(P(4.4, 4.0), Y, X, 0.8, 0.1)};
+        av = revisarCirculacion(e, v, 1.0, 0.9);
+        bool sinBoca = false;  // sin la boca abierta, al pasillo no se llega
+        for (auto &a : av) if (a.nivel == 2 && a.texto.find("PASILLO") != std::string::npos) sinBoca = true;
+        ok(sinBoca, "circulación: pasillo cerrado se detecta");
+        Vano boca = puerta(P(3.5, 2.95), X, Y, 0.9, 0.1);
+        boca.tipo = TipoVano::Vano;
+        v.push_back(boca);
+        av = revisarCirculacion(e, v, 1.0, 0.9);
+        bool problema = false;
+        for (auto &a : av) if (a.nivel > 0) problema = true;
+        ok(!av.empty() && av[0].nivel == 0 && !problema, "circulación: con pasillo todo bien");
+        av = revisarCirculacion(e, v, 1.0, 1.2);
+        problema = false;
+        for (auto &a : av) if (a.nivel == 2 && a.texto.find("angosto") != std::string::npos) problema = true;
+        ok(problema, "circulación: pasillo angosto");
+        av = revisarCirculacion(e, {v[1], v[2], v[3]}, 1.0, 0.9);
+        ok(!av.empty() && av[0].texto.find("entrada") != std::string::npos, "circulación: sin puerta de entrada");
     }
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;

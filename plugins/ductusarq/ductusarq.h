@@ -49,6 +49,7 @@ private:
     void renderPlanta(Document_Interface *doc, QWidget *parent);
     // ventas.cpp
     void planoVentas(Document_Interface *doc, QWidget *parent);
+    void revisarCirculacion(Document_Interface *doc, QWidget *parent);
     // rotulo.cpp
     void rotulo(Document_Interface *doc, QWidget *parent);
     // ductusarq.cpp

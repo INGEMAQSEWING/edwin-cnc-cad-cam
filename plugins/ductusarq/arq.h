@@ -368,12 +368,19 @@ struct Casa {
     double muroExt = 0.15, muroInt = 0.10; // espesores
     std::vector<double> divX, divY;        // distancias de los ejes interiores desde el borde
     double columna = 0;                    // lado de columna cuadrada (0 = sin columnas)
+    // Pasillo a lo largo (ancho libre, 0 = sin pasillo). Va junto al primer eje a lo ancho
+    // (divX[0]), desde el final de la primera fila (zona social) hasta el fondo: cada cuarto de
+    // atrás tiene su puerta al pasillo y no hay que atravesar una alcoba para llegar a otra.
+    double pasillo = 0;
 };
 
 struct CasaGeom {
     std::vector<Rect> muros;               // para contornoUnion
     std::vector<Rect> columnas;
     std::vector<double> ejesX, ejesY;      // posición de cada eje (centro de muro)
+    // Boca abierta entre la sala y el pasillo (sin muro): esquina de abajo a la izquierda, ancho
+    // a lo largo de x y espesor del muro. bocaAncho = 0 si no hay pasillo.
+    double bocaX = 0, bocaY = 0, bocaAncho = 0, bocaEspesor = 0;
 };
 
 inline CasaGeom casaGeom(const Casa &c) {
@@ -383,17 +390,46 @@ inline CasaGeom casaGeom(const Casa &c) {
     g.muros.push_back(rect(0, L - e, W, L));       // arriba
     g.muros.push_back(rect(0, 0, e, L));           // izquierda
     g.muros.push_back(rect(W - e, 0, W, L));       // derecha
+    const double t = c.muroInt;
+    // Con pasillo: dos muros a lo largo (x1 y x2) separados por el ancho libre del pasillo.
+    double x1 = 0, x2 = 0, y0 = 0;
+    bool conPasillo = false;
+    if (c.pasillo > 0 && c.divX.size() == 1 && !c.divY.empty()) {
+        x1 = c.divX[0];
+        x2 = x1 + c.pasillo + t;
+        y0 = c.divY[0];
+        conPasillo = x1 > e && x2 < W - e && y0 > e && y0 < L - e;
+    }
     g.ejesX.push_back(e / 2);
-    for (double x : c.divX)
-        if (x > e && x < W - e) {
-            g.muros.push_back(rect(x - c.muroInt / 2, e, x + c.muroInt / 2, L - e));
-            g.ejesX.push_back(x);
-        }
+    if (conPasillo) {
+        // x1 va de la zona social al fondo; x2 de punta a punta (separa la cocina de la sala).
+        g.muros.push_back(rect(x1 - t / 2, y0 - t / 2, x1 + t / 2, L - e));
+        g.muros.push_back(rect(x2 - t / 2, e, x2 + t / 2, L - e));
+        g.ejesX.push_back(x1);
+        g.ejesX.push_back(x2);
+        g.bocaX = x1 + t / 2;
+        g.bocaY = y0 - t / 2;
+        g.bocaAncho = c.pasillo;
+        g.bocaEspesor = t;
+    } else {
+        for (double x : c.divX)
+            if (x > e && x < W - e) {
+                g.muros.push_back(rect(x - t / 2, e, x + t / 2, L - e));
+                g.ejesX.push_back(x);
+            }
+    }
     g.ejesX.push_back(W - e / 2);
     g.ejesY.push_back(e / 2);
     for (double y : c.divY)
         if (y > e && y < L - e) {
-            g.muros.push_back(rect(e, y - c.muroInt / 2, W - e, y + c.muroInt / 2));
+            // Los muros a lo ancho no cruzan el pasillo. En y0 (entre la sala y el pasillo) queda un
+            // vano abierto del ancho del pasillo: separa el área de la sala de la del pasillo.
+            if (conPasillo) {
+                g.muros.push_back(rect(e, y - t / 2, x1 + t / 2, y + t / 2));
+                g.muros.push_back(rect(x2 - t / 2, y - t / 2, W - e, y + t / 2));
+            } else {
+                g.muros.push_back(rect(e, y - t / 2, W - e, y + t / 2));
+            }
             g.ejesY.push_back(y);
         }
     g.ejesY.push_back(L - e / 2);

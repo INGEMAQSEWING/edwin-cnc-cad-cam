@@ -467,6 +467,7 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
             {"ESP", "Área de un espacio (clic adentro)"},
             {"CA", "Cuadro de áreas"},
             {"CV", "Cuadro de puertas y ventanas"},
+            {"CIR", "Revisar circulación (pasillos y puertas)"},
             {"MOB", "Mobiliario"},
             {"ELEC", "Electrodomésticos"},
             {"SAN", "Sanitarios"},

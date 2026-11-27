@@ -13,6 +13,7 @@
 
 #include "ductusarq.h"
 #include "comun.h"
+#include "circulacion.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -156,6 +157,10 @@ void DuctusArq::casaRapida(Document_Interface *doc, QWidget *parent)
     auto divY = v.medida(u("Espacios a lo largo (opcional):"), "casaDivY", "4 3.5 4", "13' 12' 13'",
                          u("Medidas de los espacios de abajo hacia arriba. Ejemplo en 15 m: «4 3.5 4» "
                            "(lo que sobra queda como último espacio)."));
+    auto pas = v.medida(u("Pasillo (ancho libre, 0 = sin pasillo):"), "casaPasillo", "1.00", "3'-6\"",
+                        u("Pasillo a lo largo, a la derecha del primer espacio a lo ancho, desde la sala hasta el "
+                          "fondo: cada alcoba y el baño quedan con su puerta al pasillo. Con pasillo escriba UN "
+                          "solo número en «Espacios a lo ancho» (el ancho de los cuartos de la izquierda)."));
     auto col = v.medida(u("Columnas (lado, 0 = sin columnas):"), "casaColumna", "0.25", "10\"");
     auto cEjes = v.casilla(u("Ejes con burbujas"), "casaEjes", true);
     auto cCotas = v.casilla(u("Cotas"), "casaCotas", true);
@@ -172,6 +177,7 @@ void DuctusArq::casaRapida(Document_Interface *doc, QWidget *parent)
         if (!da::lista(parent, divX, v.un, ex, u("Espacios a lo ancho"), true)) return false;
         if (!da::lista(parent, divY, v.un, ey, u("Espacios a lo largo"), true)) return false;
         if (!da::medida(parent, col, v.un, colLado, 0, u("Columnas"))) return false;
+        if (!da::medida(parent, pas, v.un, c.pasillo, 0, u("Pasillo"))) return false;
         if (2 * c.muroExt >= std::min(c.ancho, c.largo)) {
             QMessageBox::warning(parent, u("Revise las medidas"), u("Los muros exteriores son más gruesos que la casa."));
             return false;
@@ -183,6 +189,21 @@ void DuctusArq::casaRapida(Document_Interface *doc, QWidget *parent)
         for (double d : ex) { acum += d; c.divX.push_back(acum); }
         acum = 0;
         for (double d : ey) { acum += d; c.divY.push_back(acum); }
+        if (c.pasillo > 0) {
+            if (c.divX.size() != 1 || c.divY.empty()) {
+                QMessageBox::warning(parent, u("Pasillo"),
+                                     u("Con pasillo escriba UN solo número en «Espacios a lo ancho» (el ancho de los "
+                                       "cuartos de la izquierda) y al menos uno en «Espacios a lo largo» (el fondo de "
+                                       "la sala). O escriba 0 en «Pasillo» para una casa sin pasillo."));
+                return false;
+            }
+            if (arq::casaGeom(c).bocaAncho <= 0) {
+                QMessageBox::warning(parent, u("Pasillo"),
+                                     u("El pasillo no cabe: los cuartos de la izquierda más el pasillo son más anchos "
+                                       "que la casa. Reduzca el ancho de los cuartos o el del pasillo."));
+                return false;
+            }
+        }
         return true;
     })) return;
 
@@ -201,6 +222,16 @@ void DuctusArq::casaRapida(Document_Interface *doc, QWidget *parent)
         std::vector<std::vector<arq::P>> polis;
         for (const arq::Rect &r : todo) polis.push_back(arq::esquinas(r));
         da::datosMuros(doc, base, polis, v.un);
+    }
+    if (g.bocaAncho > 0) {
+        // Boca abierta sala-pasillo: se guarda como vano (sin puerta) para que el área de la sala
+        // no se escape al pasillo y la revisión de circulación sepa que están unidos.
+        arq::Vano b = arq::bocaPasillo(g);
+        b.o = b.o + arq::P(base.x(), base.y());
+        da::dato(doc, QPointF(b.o.x + b.ancho / 2, b.o.y - un.papel(4)),
+                 u("DUCTUS-VANO|VA-1|%1|%2|%3|0||%4").arg(u(arq::nombreTipoVano(b.tipo))).arg(b.ancho, 0, 'f', 4)
+                     .arg(un.metros(2.10), 0, 'f', 4)
+                     .arg(QString::fromStdString(arq::esquinasVano(b) + "|" + arq::datoLadoVano(b))), un);
     }
 
     const double dCota1 = un.papel(8), dCota2 = un.papel(15), dEje = un.papel(22);
