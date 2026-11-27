@@ -3,6 +3,7 @@
 //   py -3.10 -m ziglang c++ -std=c++17 -I C:/dev/edwin-cnc-cad-cam/plugins/ductusarq generar_figuras.cpp -o gen.exe
 //   gen.exe colombia > colombia.txt   |   gen.exe miami > miami.txt
 #include "arq.h"
+#include "circulacion.h"
 
 #include <cstdio>
 #include <cstring>
@@ -62,27 +63,30 @@ struct Ej {
 static Ej colombia() {
     Ej e;
     e.casa.ancho = 7.00; e.casa.largo = 10.00; e.casa.muroExt = 0.15; e.casa.muroInt = 0.10;
-    e.casa.divX = {3.40};
+    // Pasillo de 1.00 m: cada alcoba y el baño abren al pasillo (no se atraviesa un cuarto).
+    e.casa.divX = {3.00};
     e.casa.divY = {3.00, 6.50};
+    e.casa.pasillo = 1.00;
     e.casa.columna = 0.25;
     auto v = [&](TipoVano t, P o, P d, double a, double h, double ap, int lado, bool bi, const char *m) {
         e.vanos.push_back({t, o, d, a, h, ap, lado, bi, m, ""});
     };
     const P X(1, 0), Y(0, 1);
-    v(TipoVano::Batiente, P(0.60, 0), X, 0.90, 2.10, 0, 1, true, "P-1");     // entrada
-    v(TipoVano::Batiente, P(3.35, 1.10), Y, 0.90, 2.10, 0, 1, false, "P-2");  // sala -> cocina
-    v(TipoVano::Batiente, P(2.20, 2.95), X, 0.80, 2.10, 0, 1, true, "P-3");   // sala -> alcoba 1
-    v(TipoVano::Batiente, P(1.20, 6.45), X, 0.80, 2.10, 0, 1, true, "P-3");   // alcoba 1 -> alcoba 2
-    v(TipoVano::Batiente, P(4.20, 2.95), X, 0.80, 2.10, 0, 1, false, "P-3");  // cocina -> baño
-    v(TipoVano::Batiente, P(5.40, 6.45), X, 0.80, 2.10, 0, 1, true, "P-3");   // baño -> alcoba ppal
+    v(TipoVano::Batiente, P(0.60, 0), X, 0.90, 2.10, 0, 1, true, "P-1");     // entrada a la sala
+    v(TipoVano::Batiente, P(4.05, 1.10), Y, 0.90, 2.10, 0, 1, false, "P-2"); // sala -> cocina
+    v(TipoVano::Batiente, P(3.05, 3.30), Y, 0.80, 2.10, 0, 1, true, "P-3");  // pasillo -> alcoba 1
+    v(TipoVano::Batiente, P(3.05, 6.80), Y, 0.80, 2.10, 0, 1, true, "P-3");  // pasillo -> alcoba 2
+    v(TipoVano::Batiente, P(4.05, 3.30), Y, 0.80, 2.10, 0, 1, false, "P-3"); // pasillo -> baño
+    v(TipoVano::Batiente, P(4.05, 6.80), Y, 0.80, 2.10, 0, 1, false, "P-3"); // pasillo -> alcoba principal
     v(TipoVano::Ventana, P(1.80, 0), X, 1.20, 1.20, 1.00, 0, true, "V-1");   // sala
-    v(TipoVano::Ventana, P(4.60, 0), X, 1.50, 1.00, 1.10, 0, true, "V-2");   // cocina
-    v(TipoVano::Ventana, P(1.00, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba 2
-    v(TipoVano::Ventana, P(4.80, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba principal
+    v(TipoVano::Ventana, P(4.80, 0), X, 1.50, 1.00, 1.10, 0, true, "V-2");   // cocina
+    v(TipoVano::Ventana, P(0.90, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba 2
+    v(TipoVano::Ventana, P(5.00, 10.0), X, 1.20, 1.20, 1.00, 0, true, "V-1"); // alcoba principal
     v(TipoVano::Ventana, P(0, 4.10), Y, 1.20, 1.20, 1.00, 0, true, "V-1");   // alcoba 1
     v(TipoVano::Ventana, P(7.0, 4.40), Y, 0.60, 0.60, 1.60, 0, true, "V-3"); // baño
-    e.espacios = {{"SALA", P(1.70, 1.60)}, {"COCINA - COMEDOR", P(5.20, 1.80)}, {"ALCOBA 1", P(1.70, 4.80)},
-                  {"BAÑO Y ROPAS", P(5.20, 4.90)}, {"ALCOBA 2", P(1.70, 8.20)}, {"ALCOBA PRINCIPAL", P(5.20, 8.20)}};
+    e.espacios = {{"SALA", P(1.70, 1.60)}, {"COCINA - COMEDOR", P(5.50, 1.80)}, {"PASILLO", P(3.55, 5.20)},
+                  {"ALCOBA 1", P(1.55, 5.20)}, {"BAÑO Y ROPAS", P(5.50, 5.20)}, {"ALCOBA 2", P(1.55, 8.40)},
+                  {"ALCOBA PRINCIPAL", P(5.50, 8.40)}};
     e.lote = 8.00 * 12.00;
     e.titulo = "PLANTA ARQUITECTÓNICA PRIMER PISO";
     return e;
@@ -92,37 +96,104 @@ static Ej miami() {
     Ej e;
     const double ft = 12;
     e.casa.ancho = 38 * ft; e.casa.largo = 48 * ft; e.casa.muroExt = 8; e.casa.muroInt = 4.5;
-    e.casa.divX = {15 * ft};
+    // Hall de 4'-0" libre: cada cuarto abre al hall; se llega por la escalera del loft.
+    e.casa.divX = {13 * ft};
     e.casa.divY = {12 * ft, 23 * ft, 34 * ft};
+    e.casa.pasillo = 48;
     e.casa.columna = 0;
     auto v = [&](TipoVano t, P o, P d, double a, double h, double ap, int lado, bool bi, const char *m, const char *noa) {
         e.vanos.push_back({t, o, d, a, h, ap, lado, bi, m, noa});
     };
     const P X(1, 0), Y(0, 1);
-    const char *noaP = "NOA 00-0000.00 (EJ.)";
     const char *noaV = "NOA 00-0000.01 (EJ.)";
-    // Puertas interiores de 2'-8" y 2'-6"
-    v(TipoVano::Batiente, P(15 * ft - 2.25, 4 * ft), Y, 32, 80, 0, -1, true, "P-1", "");     // bedroom 3
-    v(TipoVano::Batiente, P(15 * ft - 2.25, 14 * ft), Y, 30, 80, 0, -1, true, "P-2", "");    // bath
-    v(TipoVano::Batiente, P(15 * ft - 2.25, 26 * ft), Y, 32, 80, 0, -1, true, "P-1", "");    // bedroom 2
-    v(TipoVano::Doble, P(15 * ft - 2.25, 38 * ft), Y, 60, 80, 0, -1, true, "P-3", "");       // master (2 hojas)
-    v(TipoVano::Batiente, P(26 * ft, 12 * ft - 2.25), X, 32, 80, 0, -1, true, "P-1", "");    // bedroom 4
-    v(TipoVano::Batiente, P(28 * ft, 34 * ft - 2.25), X, 30, 80, 0, 1, true, "P-2", "");     // master bath
+    // Caras del hall: x = 158.25" (lado de las alcobas de la izquierda) y 206.25" (derecha).
+    const double hallIzq = 13 * ft + 2.25, hallDer = 13 * ft + 48 + 2.25;
+    // Puertas interiores de 2'-8" y 2'-6"; abren hacia el cuarto.
+    v(TipoVano::Batiente, P(hallDer, 4 * ft), Y, 32, 80, 0, 1, true, "P-1", "");        // loft -> bedroom 4
+    v(TipoVano::Batiente, P(hallIzq, 13 * ft), Y, 32, 80, 0, 1, true, "P-1", "");       // hall -> bedroom 3
+    v(TipoVano::Batiente, P(hallDer, 13 * ft), Y, 30, 80, 0, 1, false, "P-2", "");      // hall -> bath
+    v(TipoVano::Batiente, P(hallIzq, 24 * ft), Y, 32, 80, 0, 1, true, "P-1", "");       // hall -> bedroom 2
+    v(TipoVano::Batiente, P(hallIzq, 36 * ft), Y, 32, 80, 0, 1, true, "P-1", "");       // hall -> bonus room
+    v(TipoVano::Doble, P(hallDer, 36 * ft), Y, 60, 80, 0, 1, true, "P-3", "");          // hall -> master (2 hojas)
+    v(TipoVano::Batiente, P(30 * ft, 34 * ft + 2.25), X, 30, 80, 0, 1, true, "P-2", ""); // master -> master bath
     // Ventanas de impacto (Miami-Dade) con NOA
-    v(TipoVano::Ventana, P(4 * ft, 0), X, 36, 60, 36, 0, true, "V-1", noaV);
-    v(TipoVano::Ventana, P(24 * ft, 0), X, 36, 60, 36, 0, true, "V-1", noaV);
-    v(TipoVano::Ventana, P(0, 27 * ft), Y, 36, 60, 36, 0, true, "V-1", noaV);
-    v(TipoVano::Ventana, P(4 * ft, 48 * ft), X, 72, 60, 36, 0, true, "V-2", noaV);
-    v(TipoVano::Ventana, P(28 * ft, 48 * ft), X, 36, 48, 48, 0, true, "V-3", noaV);
-    v(TipoVano::Ventana, P(38 * ft, 16 * ft), Y, 72, 72, 24, 0, true, "V-2", noaV);
-    (void)noaP;
-    e.espacios = {{"BEDROOM 3", P(7 * ft, 6 * ft)}, {"BATH", P(7 * ft, 17 * ft)}, {"BEDROOM 2", P(7 * ft, 28 * ft)},
-                  {"MASTER SUITE", P(7 * ft, 41 * ft)}, {"BEDROOM 4", P(27 * ft, 6 * ft)},
-                  {"LOFT", P(27 * ft, 18 * ft)}, {"OPEN TO BELOW", P(27 * ft, 29 * ft)},
-                  {"BONUS ROOM", P(27 * ft, 41 * ft)}};
+    v(TipoVano::Ventana, P(4 * ft, 0), X, 36, 60, 36, 0, true, "V-1", noaV);           // loft
+    v(TipoVano::Ventana, P(26 * ft, 0), X, 36, 60, 36, 0, true, "V-1", noaV);          // bedroom 4
+    v(TipoVano::Ventana, P(0, 16 * ft), Y, 36, 60, 36, 0, true, "V-1", noaV);          // bedroom 3
+    v(TipoVano::Ventana, P(0, 27 * ft), Y, 36, 60, 36, 0, true, "V-1", noaV);          // bedroom 2
+    v(TipoVano::Ventana, P(4 * ft, 48 * ft), X, 72, 60, 36, 0, true, "V-2", noaV);     // bonus room
+    v(TipoVano::Ventana, P(28 * ft, 48 * ft), X, 72, 60, 36, 0, true, "V-2", noaV);    // master suite
+    v(TipoVano::Ventana, P(38 * ft, 16 * ft), Y, 36, 48, 48, 0, true, "V-3", noaV);    // bath
+    v(TipoVano::Ventana, P(38 * ft, 27 * ft), Y, 36, 48, 48, 0, true, "V-3", noaV);    // master bath
+    e.espacios = {{"STAIR / LOFT", P(8 * ft, 6 * ft)}, {"BEDROOM 4", P(27 * ft, 6 * ft)},
+                  {"HALL", P(15.2 * ft, 20 * ft)}, {"BEDROOM 3", P(6.5 * ft, 17.5 * ft)},
+                  {"BATH", P(27 * ft, 17.5 * ft)}, {"BEDROOM 2", P(6.5 * ft, 28.5 * ft)},
+                  {"MASTER BATH", P(27 * ft, 28.5 * ft)}, {"BONUS ROOM", P(6.5 * ft, 41 * ft)},
+                  {"MASTER SUITE", P(27 * ft, 41 * ft)}};
     e.lote = (50 * ft) * (100 * ft);
     e.titulo = "SECOND FLOOR PLAN / PLANTA SEGUNDO PISO";
     return e;
+}
+
+// Vanos ya armados (con su espesor y lado) + la boca abierta sala-pasillo de «Casa rápida».
+// Lo usan plano_json.cpp (render) y la prueba del plano de ventas.
+static std::vector<Vano> vanosListos(const Ej &e, const CasaGeom &g, const std::vector<Seg> &segs) {
+    std::vector<Vano> r;
+    for (const VanoDef &d : e.vanos) {
+        Vano v;
+        v.tipo = d.tipo; v.o = d.o; v.dir = d.dir; v.ancho = d.ancho;
+        double w = 0;
+        buscarOtraCara(segs, v.o, v.dir, v.ancho, UN.metros(0.8), UN.metros(0.001), w);
+        const P perp(-v.dir.y, v.dir.x);
+        v.n = w > 0 ? perp : perp * -1.0;
+        v.espesor = std::fabs(w);
+        v.lado = d.lado == 0 ? 1 : d.lado;
+        v.bisagraInicio = d.bisagraInicio;
+        r.push_back(v);
+    }
+    if (g.bocaAncho > 0) r.push_back(bocaPasillo(g));
+    return r;
+}
+
+// Muebles de las casas de ejemplo: m(id, x, y, grados). 0° = respaldo hacia +y (arriba),
+// 180° hacia -y, 90° hacia -x, 270° hacia +x.
+template <class F> static void mueblesEjemplo(bool mia, F m) {
+    if (!mia) {
+        // Sala (frente izquierda + boca del pasillo)
+        m("sofa3", 2.10, 2.50, 0); m("mesa_centro", 2.10, 1.60, 0); m("mueble_tv", 2.60, 0.36, 180);
+        // Cocina - comedor
+        m("meson", 5.45, 0.45, 180); m("estufa", 6.55, 1.40, 90); m("nevera", 6.50, 2.45, 90);
+        m("comedor4", 5.55, 1.95, 90);
+        // Alcoba 1
+        m("cama_doble", 1.45, 5.45, 0); m("mesa_noche", 0.45, 6.20, 0); m("closet", 1.00, 3.35, 180);
+        // Baño y ropas
+        m("ducha", 6.35, 3.55, 0); m("sanitario", 6.45, 5.00, 270); m("lavamanos", 5.40, 6.20, 0);
+        m("lavadora", 4.50, 6.12, 0);
+        // Alcoba 2
+        m("cama_sencilla", 0.75, 8.85, 0); m("escritorio", 2.00, 9.50, 0); m("closet", 0.90, 6.85, 180);
+        // Alcoba principal
+        m("cama_queen", 5.60, 8.90, 0); m("mesa_noche", 4.50, 9.62, 0); m("mesa_noche", 6.60, 9.62, 0);
+        m("closet", 5.90, 6.85, 180);
+    } else {
+        // Stair / loft
+        m("sofa2", 100, 110, 0); m("mesa_centro", 100, 70, 0); m("mueble_tv", 100, 18, 180);
+        // Bedroom 4
+        m("cama_queen", 330, 100, 0); m("mesa_noche", 285, 132, 0); m("mesa_noche", 375, 132, 0);
+        m("escritorio", 436, 40, 270);
+        // Bedroom 3
+        m("cama_doble", 75, 236, 0); m("mesa_noche", 28, 263, 0); m("comoda", 60, 157, 180);
+        // Bath
+        m("tina", 433, 210, 90); m("lavamanos_doble", 320, 262, 0); m("sanitario", 380, 160, 180);
+        // Bedroom 2
+        m("cama_queen", 80, 366, 0); m("mesa_noche", 30, 396, 0); m("mesa_noche", 130, 396, 0);
+        // Master bath
+        m("tina", 433, 320, 90); m("lavamanos_doble", 300, 394, 0); m("sanitario", 230, 300, 90); m("ducha", 240, 380, 0);
+        // Bonus room
+        m("sofa3", 70, 540, 0); m("mesa_centro", 70, 495, 0); m("mueble_tv", 70, 420, 180);
+        // Master suite
+        m("cama_king", 330, 527, 0); m("mesa_noche", 275, 557, 0); m("mesa_noche", 385, 557, 0);
+        m("poltrona", 420, 455, 0); m("comoda", 280, 421, 180);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -177,12 +248,18 @@ int main(int argc, char **argv) {
         cortados.swap(nuevos);
         hechos.push_back({v, simboloVano(v, UN.papel(7)), d});
     }
+    if (g.bocaAncho > 0) {
+        const Vano b = bocaPasillo(g);
+        VanoDef d{TipoVano::Vano, b.o, b.dir, b.ancho, UN.metros(2.10), 0, 1, true, "VA-1", ""};
+        hechos.push_back({b, simboloVano(b, UN.papel(7)), d});
+    }
     auto dibujarVanos = [&]() {
         for (const Hecho &h : hechos) {
             const char *capa = h.v.tipo == TipoVano::Ventana ? "A-VENTANAS" : "A-PUERTAS";
             for (const Seg &s : h.s.lineas) L(capa, s.a, s.b);
             for (const Arco &a : h.s.arcos) A(capa, a);
             const double r = UN.papel(3.5);
+            if (h.v.tipo == TipoVano::Vano) continue;  // boca abierta: sin símbolo ni marca
             if (h.v.tipo == TipoVano::Ventana)
                 R(rect(h.s.marca.x - r * 1.3, h.s.marca.y - r * 0.8, h.s.marca.x + r * 1.3, h.s.marca.y + r * 0.8), "A-SIMBOLOS");
             else C("A-SIMBOLOS", h.s.marca, r);
@@ -203,6 +280,7 @@ int main(int argc, char **argv) {
     dibujarBase(cortados);
     dibujarVanos();
     std::vector<DatoEspacio> datos;
+    std::vector<EspacioVentas> espCirc;
     for (const auto &es : e.espacios) {
         const AreaEspacio a = areaPorPunto(cierre, es.punto, UN.metros(200), tol);
         if (!a.cerrado) { std::fprintf(stderr, "espacio abierto: %s\n", es.nombre); return 1; }
@@ -212,7 +290,14 @@ int main(int argc, char **argv) {
         T("A-TEXTOS", P(es.punto.x, es.punto.y + UN.papel(2)), UN.papel(3), "cb", es.nombre);
         T("A-TEXTOS", P(es.punto.x, es.punto.y - UN.papel(1)), UN.papel(2.5), "ct", buf);
         datos.push_back({es.nombre, "espacio", 1, a.area});
+        espCirc.push_back({es.nombre, es.punto, a.celdas, a.area});
         std::printf("AREA %s|%.6f\n", es.nombre, a.area);
+    }
+    {   // Revisión de circulación (la misma del comando CIR)
+        std::vector<Vano> vs;
+        for (const Hecho &h : hechos) vs.push_back(h.v);
+        for (const auto &x : revisarCirculacion(espCirc, vs, UN.metros(1.0), UN.metros(SIS == Sistema::Imperial ? 0.9144 : 0.90)))
+            std::fprintf(stderr, "CIRC %d %s\n", x.nivel, x.texto.c_str());
     }
     datos.push_back({"CONSTRUIDA", "construida", 1, W * Lg});
     datos.push_back({"LOTE", "lote", 0, e.lote});

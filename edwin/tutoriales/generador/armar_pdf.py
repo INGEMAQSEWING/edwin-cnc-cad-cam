@@ -283,7 +283,7 @@ def tutorial(miami):
         p.insert_text(pymupdf.Point(40, 112), "Cómo hacer un plano", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 146), "para licencia en Colombia", fontsize=28, color=(1, 1, 1), fontname="hebo")
         p.insert_text(pymupdf.Point(40, 180), "Curaduría urbana · Res. 462/2017 y 1025/2021 · metros", fontsize=11, color=(0.85, 0.9, 1))
-    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.21 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
+    p.insert_text(pymupdf.Point(40, 210), "Tutorial paso a paso · versión 1.0.26 · noviembre de 2026", fontsize=9, color=(0.85, 0.9, 1))
     doc.y = 256
     doc.parrafo("La muestra que vamos a dibujar", fs=13, negrita=True, color=AZUL)
     ref = os.path.join(REF, "ventas.jpeg" if miami else "planta.jpeg")
@@ -319,15 +319,19 @@ def tutorial(miami):
     if miami:
         filas = [["Casilla", "Qué escribir"], ["Ancho (frente)", "38'"], ["Largo (fondo)", "48'"],
                  ["Muro exterior", "8\"  (bloque de concreto CMU de 8\")"], ["Muro interior", "4 1/2\""],
-                 ["Espacios a lo ancho", "15'"], ["Espacios a lo largo", "12' 11' 11'"],
+                 ["Espacios a lo ancho", "13'  (cuartos de la izquierda)"], ["Espacios a lo largo", "12' 11' 11'"],
+                 ["Pasillo", "4'  (hall de 4'-0\" libre; mínimo 3'-0\")"],
                  ["Columnas", "0  (sin columnas: muros de bloque)"]]
     else:
         filas = [["Casilla", "Qué escribir"], ["Ancho (frente)", "7"], ["Largo (fondo)", "10"],
-                 ["Muro exterior", "0.15"], ["Muro interior", "0.10"], ["Espacios a lo ancho", "3.40"],
-                 ["Espacios a lo largo", "3.00 3.50"], ["Columnas", "0.25"]]
+                 ["Muro exterior", "0.15"], ["Muro interior", "0.10"], ["Espacios a lo ancho", "3.00  (cuartos de la izquierda)"],
+                 ["Espacios a lo largo", "3.00 3.50"], ["Pasillo", "1.00  (ancho libre; mínimo 0.90)"], ["Columnas", "0.25"]]
     doc.y = tabla(p, 40, doc.y, [140, doc.W - 80 - 140], filas, "Ventana «Casa rápida»") + 8
     doc.parrafo("Deje marcadas «Ejes con burbujas», «Cotas» y «Título». Dé clic en «Dibujar» y después un clic en "
                 "la pantalla donde va la esquina de abajo a la izquierda de la casa.", fs=9.5)
+    doc.parrafo("Con «Pasillo» la casa queda con un pasillo a lo largo: cada alcoba y el baño abren al pasillo y "
+                "nunca hay que atravesar un cuarto para llegar a otro. Entre la sala y el pasillo queda un vano "
+                "abierto (sin puerta).", fs=9, color=GRIS)
     doc.figura(figs["casa"], doc.H - doc.y - 70,
                f"Resultado: casa de {casa_w} x {casa_l}. Las uniones de muros en L, T y cruz quedan limpias; "
                "ejes 1, 2, 3 y A, B, C... con burbujas; cotas entre ejes y totales.")
@@ -358,7 +362,10 @@ def tutorial(miami):
                "Clic DENTRO del espacio: el área se mide hasta la cara de los muros. Las puertas cierran el espacio, "
                "así el área no se escapa al cuarto de al lado.",
                "El programa pregunta el nombre del siguiente espacio. Cancelar termina.",
-               "Para el lote y el área construida del piso use «Qué es: Lote» o «Área construida» y marque las esquinas a mano."], fs=9)
+               "Para el lote y el área construida del piso use «Qué es: Lote» o «Área construida» y marque las esquinas a mano.",
+               "Nombre también el " + ("HALL y la escalera (STAIR)" if miami else "PASILLO") + ". Después escriba CIR "
+               "(Revisar circulación): el programa revisa que a cada cuarto se llegue desde la entrada sin atravesar "
+               "otro cuarto, y que el pasillo tenga el ancho mínimo."], fs=9)
     doc.figura(figs["areas"], doc.H - doc.y - 60, "Resultado: cada espacio con su nombre y su área; el dato queda guardado "
                "en la capa A-DATOS (no se imprime) para el cuadro de áreas.")
 
