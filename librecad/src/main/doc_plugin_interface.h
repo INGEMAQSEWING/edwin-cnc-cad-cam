@@ -129,6 +129,11 @@ public:
     QString realToStr(const qreal num, const int units = 0, const int prec = 0) override;
     void addDimAligned(QPointF p1, QPointF p2, QPointF linePoint, QString text = QString()) override;
     void addSolid(std::vector<QPointF> const& corners) override;
+    QString addBlockSuperpuesto(QString fullName, QString prefijo, int color) override;
+    bool setLayerState(QString name, bool visible, bool locked) override;
+    bool getLayerState(QString name, bool *visible, bool *locked) override;
+    bool getInsertGeometry(QString block, QList<QPolygonF> *polys, QStringList *capas,
+                           QList<QPointF> *centros, QList<double> *radios) override;
 
     //method to handle undo in Plugin_Entity 
     bool addToUndo(RS_Entity* current, RS_Entity* modified, DPI::Disposition how);

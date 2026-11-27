@@ -474,6 +474,9 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
             {"POR", "Pórtico"},
             {"CIM", "Cimentación"},
             {"ROT", "Rótulo / cajetín"},
+            {"", "COORDINACIÓN DE PLANOS"},
+            {"SUP", "Superponer plano (estructural, eléctrico...)"},
+            {"CRU", "Revisar cruces con el estructural"},
             {"", "VENTAS Y MERCADEO"},
             {"PV", "Plano de ventas a color"},
             {"REN", "Render 3D de la planta"},
@@ -502,19 +505,47 @@ void LC_WidgetFactory::createRightSidebar(QG_ActionHandler* action_handler)
             {"AA", "Área"},
             {"H", "Deshacer"},
         };
+        // Estilo consola (como Visual Studio Code o PowerShell): fondo negro, letra de código y un
+        // color por tipo de comando, para que se sienta como programar el dibujo.
+        lista->setAlternatingRowColors(false);
+        lista->setStyleSheet(
+            "QTreeWidget { background: #1e1e1e; color: #d4d4d4; border: none;"
+            " font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace; font-size: 10pt; }"
+            "QTreeWidget::item { padding: 2px 0; }"
+            "QTreeWidget::item:hover { background: #2a2d2e; }"
+            "QTreeWidget::item:selected { background: #094771; color: #ffffff; }"
+            "QHeaderView::section { background: #252526; color: #9cdcfe; border: none;"
+            " border-bottom: 1px solid #3c3c3c; padding: 4px 6px;"
+            " font-family: Consolas, monospace; font-weight: bold; }");
+        struct Grupo { const char* nombre; const char* color; };
+        const Grupo colores[] = {
+            {"ARQUITECTURA", "#4fc1ff"},           // cian
+            {"COORDINACIÓN DE PLANOS", "#ce9178"}, // naranja
+            {"VENTAS Y MERCADEO", "#dcdcaa"},      // amarillo
+            {"DIBUJO", "#6ad46a"},                 // verde
+            {"MODIFICAR", "#f48771"},              // rojo
+            {"VER Y CONSULTAR", "#c586c0"},        // violeta
+        };
+        QColor colorGrupo("#d4d4d4");
         for (const auto& f : filas) {
             auto item = new QTreeWidgetItem(lista);
             if (*f.comando == 0) {
-                item->setText(0, QString::fromUtf8(f.texto));
+                const QString nombre = QString::fromUtf8(f.texto);
+                for (const auto& g : colores)
+                    if (nombre == QString::fromUtf8(g.nombre)) colorGrupo = QColor(g.color);
+                item->setText(0, QString::fromUtf8("// ") + nombre);
                 item->setFirstColumnSpanned(true);
                 QFont negrita = item->font(0);
                 negrita.setBold(true);
                 item->setFont(0, negrita);
+                item->setForeground(0, QColor("#ffd700"));
                 item->setFlags(Qt::ItemIsEnabled);
                 continue;
             }
-            item->setText(0, QString::fromUtf8(f.comando));
+            item->setText(0, QString::fromUtf8("> ") + QString::fromUtf8(f.comando));
+            item->setForeground(0, colorGrupo);
             item->setText(1, QString::fromUtf8(f.texto));
+            item->setForeground(1, QColor("#d4d4d4"));
             item->setData(0, Qt::UserRole, QString::fromUtf8(f.comando).toLower());
             item->setToolTip(1, QString::fromUtf8("Escriba %1 y Enter, o doble clic aquí").arg(QString::fromUtf8(f.comando)));
         }

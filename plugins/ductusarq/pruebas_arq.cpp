@@ -4,6 +4,7 @@
 #include "muebles.h"
 #include "ventas.h"
 #include "circulacion.h"
+#include "cruces.h"
 
 #include <cstdio>
 
@@ -424,6 +425,37 @@ int main() {
         ok(problema, "circulación: pasillo angosto");
         av = revisarCirculacion(e, {v[1], v[2], v[3]}, 1.0, 0.9);
         ok(!av.empty() && av[0].texto.find("entrada") != std::string::npos, "circulación: sin puerta de entrada");
+    }
+    {
+        // Cruces: columnas del estructural contra muros, vanos y espacios del arquitectónico.
+        auto rectPoli = [](double x1, double y1, double x2, double y2, const char *capa) {
+            return Poli{{P(x1, y1), P(x2, y1), P(x2, y2), P(x1, y2), P(x1, y1)}, capa};
+        };
+        std::vector<Poli> polis{rectPoli(0, 0, 0.25, 0.25, "EST-COLUMNAS"),        // en la esquina (muro)
+                                rectPoli(0.9, -0.05, 1.15, 0.20, "EST-COLUMNAS"),   // en la puerta
+                                rectPoli(2.0, 2.0, 2.25, 2.25, "EST-COLUMNAS"),     // suelta en la sala
+                                rectPoli(0, 0, 0.25, 0.25, "EST-COLUMNAS"),         // repetida
+                                rectPoli(0, 0, 5, 4, "EST-COLUMNAS"),               // muy grande: no es columna
+                                rectPoli(3, 3, 3.25, 3.25, "EST-COTAS")};           // fuera de la capa de columnas
+        auto cols = detectarColumnas(polis, {}, 0.15, 1.5);
+        ok(cols.size() == 3, "cruces: detecta 3 columnas (sin repetida, grande ni de otra capa)");
+        std::vector<std::vector<P>> muros{esquinas(rect(-0.1, -0.1, 4.1, 0.15)), esquinas(rect(-0.1, -0.1, 0.15, 3.1))};
+        std::vector<VanoArq> vanos{{"P-1", rect(0.8, 0, 1.7, 0.15)}};
+        std::vector<EspacioVentas> esp{{"SALA", P(2, 1.5), {rect(0.15, 0.15, 4, 3)}, 0}};
+        auto cr = revisarCruces(cols, muros, vanos, esp, 0.02);
+        bool puerta = false, suelta = false;
+        for (auto &c : cr) {
+            if (c.nivel == 2 && c.texto.find("P-1") != std::string::npos) puerta = true;
+            if (c.nivel == 2 && c.texto.find("suelta") != std::string::npos && c.texto.find("SALA") != std::string::npos) suelta = true;
+        }
+        ok(puerta && suelta && cr.size() == 2, "cruces: columna en la puerta y columna suelta en la sala");
+        cols = detectarColumnas({rectPoli(0, 0, 0.25, 0.25, "")}, {}, 0.15, 1.5);
+        cr = revisarCruces(cols, muros, vanos, esp, 0.02);
+        ok(cr.size() == 1 && cr[0].nivel == 0, "cruces: todo bien");
+        cr = revisarCruces({}, muros, vanos, esp, 0.02);
+        ok(cr.size() == 1 && cr[0].nivel == 1, "cruces: sin columnas avisa");
+        cols = detectarColumnas({}, {{P(2, 2), 0.15}}, 0.15, 1.5);
+        ok(cols.size() == 1, "cruces: columna redonda");
     }
     std::printf("%d/%d pruebas bien\n", total - fallas, total);
     return fallas == 0 ? 0 : 1;

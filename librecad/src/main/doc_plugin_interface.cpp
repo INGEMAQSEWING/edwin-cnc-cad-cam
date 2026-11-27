@@ -49,6 +49,9 @@
 #include "lc_undosection.h"
 #include "rs_dimaligned.h"
 #include "rs_solid.h"
+#include "rs_hatch.h"
+#include "rs_layerlist.h"
+#include "rs_blocklist.h"
 #include "intern/qc_actiongetpoint.h"
 #include "intern/qc_actiongetselect.h"
 #include "intern/qc_actiongetent.h"
@@ -1479,4 +1482,173 @@ void Doc_plugin_interface::addSolid(std::vector<QPointF> const& corners){
     doc->addEntity(solid);
     LC_UndoSection undo(doc);
     undo.addUndoable(solid);
+}
+
+// ---------------------------------------------------------------------------
+// DuctusArq: planos superpuestos (estructural, eléctrico, sanitario...) sobre el arquitectónico.
+
+namespace {
+// Capa y color "por capa" para una entidad y, si es contenedor, para todo lo que tiene adentro.
+// Las inserciones internas pasan al bloque renombrado.
+void pasarACapas(RS_Entity* e, const QString& prefijo, const QHash<QString, QString>& bloques) {
+    if (!e) return;
+    QString capa = e->getLayer(false) ? e->getLayer(false)->getName() : QString("0");
+    e->setLayer(prefijo + capa);
+    RS_Pen pen = e->getPen(false);
+    pen.setColor(RS_Color(RS2::FlagByLayer));
+    e->setPen(pen);
+    if (e->rtti() == RS2::EntityInsert) {
+        auto ins = static_cast<RS_Insert*>(e);
+        const QString nuevo = bloques.value(ins->getName());
+        if (!nuevo.isEmpty()) ins->setName(nuevo);
+        return;  // lo de adentro se rehace desde el bloque
+    }
+    if (e->isContainer())
+        for (RS_Entity* h : *static_cast<RS_EntityContainer*>(e)) pasarACapas(h, prefijo, bloques);
+}
+
+void juntarGeometria(RS_Entity* e, QList<QPolygonF>* polys, QStringList* capas,
+                     QList<QPointF>* centros, QList<double>* radios) {
+    if (!e || !e->isVisible()) return;
+    const QString capa = e->getLayer() ? e->getLayer()->getName() : QString();
+    switch (e->rtti()) {
+    case RS2::EntityLine: {
+        auto l = static_cast<RS_Line*>(e);
+        QPolygonF p;
+        p << QPointF(l->getStartpoint().x, l->getStartpoint().y) << QPointF(l->getEndpoint().x, l->getEndpoint().y);
+        polys->append(p);
+        capas->append(capa);
+        return;
+    }
+    case RS2::EntityPolyline: {
+        auto pl = static_cast<RS_Polyline*>(e);
+        QPolygonF p;
+        bool primero = true;
+        for (RS_Entity* s : *pl) {
+            if (!s->isAtomic()) continue;
+            if (primero) { p << QPointF(s->getStartpoint().x, s->getStartpoint().y); primero = false; }
+            p << QPointF(s->getEndpoint().x, s->getEndpoint().y);
+        }
+        if (p.size() >= 2) {
+            if (pl->isClosed() && p.first() != p.last()) p << p.first();
+            polys->append(p);
+            capas->append(capa);
+        }
+        return;
+    }
+    case RS2::EntityCircle: {
+        auto c = static_cast<RS_Circle*>(e);
+        centros->append(QPointF(c->getCenter().x, c->getCenter().y));
+        radios->append(c->getRadius());
+        return;
+    }
+    case RS2::EntitySolid: {
+        auto s = static_cast<RS_Solid*>(e);
+        QPolygonF p;
+        // Orden DXF: 0-1-3-2 da la vuelta al contorno.
+        for (int i : {0, 1, 3, 2}) p << QPointF(s->getCorner(i).x, s->getCorner(i).y);
+        p << p.first();
+        polys->append(p);
+        capas->append(capa);
+        return;
+    }
+    default:
+        break;
+    }
+    if (e->isContainer() && e->rtti() != RS2::EntityHatch && e->rtti() != RS2::EntityText
+        && e->rtti() != RS2::EntityMText
+        && !(e->rtti() >= RS2::EntityDimAligned && e->rtti() <= RS2::EntityDimLeader))
+        for (RS_Entity* h : *static_cast<RS_EntityContainer*>(e)) juntarGeometria(h, polys, capas, centros, radios);
+}
+} // namespace
+
+QString Doc_plugin_interface::addBlockSuperpuesto(QString fullName, QString prefijo, int color) {
+    if (fullName.isEmpty() || !doc || !docGr) return QString();
+    QFileInfo fi(fullName);
+    if (!fi.isReadable()) return QString();
+    RS_Graphic g;
+    if (!g.open(fi.absoluteFilePath(), RS2::FormatUnknown)) return QString();
+
+    RS_Color col;
+    col.fromIntColor(color);
+    // Capas del plano con el prefijo y el color de la especialidad.
+    RS_LayerList* ll = g.getLayerList();
+    for (unsigned int i = 0; i < ll->count(); i++) {
+        RS_Layer* origen = ll->at(i);
+        const QString nombre = prefijo + origen->getName();
+        if (docGr->findLayer(nombre)) continue;
+        RS_Layer* nl = origen->clone();
+        nl->setName(nombre);
+        RS_Pen pen = nl->getPen();
+        pen.setColor(col);
+        nl->setPen(pen);
+        nl->freeze(false);
+        docGr->addLayer(nl);
+    }
+    if (!docGr->findLayer(prefijo + "0")) {
+        auto l0 = new RS_Layer(prefijo + "0");
+        RS_Pen pen = l0->getPen();
+        pen.setColor(col);
+        l0->setPen(pen);
+        docGr->addLayer(l0);
+    }
+    // Bloques internos renombrados (así no chocan con los del dibujo).
+    RS_BlockList* blockList = doc->getBlockList();
+    QHash<QString, QString> nombres;
+    RS_BlockList* bl = g.getBlockList();
+    for (int i = 0; i < bl->count(); i++)
+        nombres.insert(bl->at(i)->getName(), blockList->newName(prefijo + bl->at(i)->getName()));
+    for (int i = 0; i < bl->count(); i++) {
+        auto nb = static_cast<RS_Block*>(bl->at(i)->clone());
+        nb->setName(nombres.value(bl->at(i)->getName()));
+        nb->reparent(docGr);
+        for (RS_Entity* h : *nb) pasarACapas(h, prefijo, nombres);
+        docGr->addBlock(nb);
+    }
+    // El plano completo como un bloque.
+    const QString nombre = blockList->newName(prefijo + fi.completeBaseName());
+    RS_Block* b = new RS_Block(doc, RS_BlockData(nombre, RS_Vector(0, 0), false));
+    for (unsigned int i = 0; i < g.count(); i++) {
+        RS_Entity* e = g.entityAt(i)->clone();
+        e->reparent(b);
+        b->addEntity(e);
+        pasarACapas(e, prefijo, nombres);
+    }
+    docGr->addBlock(b);
+    return nombre;
+}
+
+bool Doc_plugin_interface::setLayerState(QString name, bool visible, bool locked) {
+    if (!docGr) return false;
+    RS_Layer* layer = docGr->findLayer(name);
+    if (!layer) return false;
+    RS_LayerList* ll = docGr->getLayerList();
+    if (layer->isFrozen() == visible) ll->toggle(layer);
+    if (layer->isLocked() != locked) ll->toggleLock(layer);
+    if (gView) gView->redraw(RS2::RedrawDrawing);
+    return true;
+}
+
+bool Doc_plugin_interface::getLayerState(QString name, bool *visible, bool *locked) {
+    if (!docGr) return false;
+    RS_Layer* layer = docGr->findLayer(name);
+    if (!layer) return false;
+    if (visible) *visible = !layer->isFrozen();
+    if (locked) *locked = layer->isLocked();
+    return true;
+}
+
+bool Doc_plugin_interface::getInsertGeometry(QString block, QList<QPolygonF> *polys, QStringList *capas,
+                                             QList<QPointF> *centros, QList<double> *radios) {
+    if (!doc || !polys || !capas || !centros || !radios) return false;
+    bool hay = false;
+    for (RS_Entity* e : *doc) {
+        if (e->rtti() != RS2::EntityInsert || e->isUndone()) continue;
+        auto ins = static_cast<RS_Insert*>(e);
+        if (ins->getName() != block) continue;
+        ins->update();
+        for (RS_Entity* h : *ins) juntarGeometria(h, polys, capas, centros, radios);
+        hay = true;
+    }
+    return hay;
 }

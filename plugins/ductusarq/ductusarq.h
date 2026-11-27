@@ -50,6 +50,9 @@ private:
     // ventas.cpp
     void planoVentas(Document_Interface *doc, QWidget *parent);
     void revisarCirculacion(Document_Interface *doc, QWidget *parent);
+    // superponer.cpp
+    void superponerPlano(Document_Interface *doc, QWidget *parent);
+    void revisarCruces(Document_Interface *doc, QWidget *parent);
     // rotulo.cpp
     void rotulo(Document_Interface *doc, QWidget *parent);
     // ductusarq.cpp

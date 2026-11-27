@@ -36,6 +36,7 @@
 
 #include "lc_application.h"
 #include "qc_applicationwindow.h"
+#include "edwin_variante.h"
 #include "qg_actionhandler.h"
 #include "rs_commandevent.h"
 #include "rs_commands.h"
@@ -55,6 +56,17 @@ QG_CommandWidget::QG_CommandWidget(QWidget* parent, const char* name, Qt::Window
 {
     setObjectName(name);
     setupUi(this);
+    if (edwin::esDuctusArq()) {
+        // DuctusArq: línea de comandos con aspecto de consola (Visual Studio Code / PowerShell):
+        // fondo negro, letra de código; los comandos escritos salen en amarillo, los avisos en
+        // gris claro y los errores en rojo (ver appendHistory).
+        const char* consola = "background: #0c0c0c; color: #cccccc; border: 1px solid #333333;"
+                              " font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace; font-size: 10pt;";
+        teHistory->setStyleSheet(QString("QTextEdit { %1 }").arg(consola));
+        leCommand->setStyleSheet(QString("QLineEdit { %1 color: #ffffff; padding: 3px; }").arg(consola));
+        lCommand->setStyleSheet("QLabel { color: #6ad46a; font-family: Consolas, monospace; font-weight: bold; }");
+        lCommand->setText("PS DuctusArq>");
+    }
     m_globalShortcut = new QShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Space), this, SLOT(setFocus()));
     connect(leCommand, SIGNAL(command(QString)), this, SLOT(handleCommand(QString)));
     connect(leCommand, SIGNAL(escape()), this, SLOT(escape()));
@@ -200,13 +212,22 @@ void QG_CommandWidget::setCommand(const QString& cmd) {
     if (cmd!="") {
         lCommand->setText(cmd);
     } else {
-        lCommand->setText(tr("Command:"));
+        lCommand->setText(edwin::esDuctusArq() ? QString("PS DuctusArq>") : tr("Command:"));
     }
     leCommand->setText("");
 }
 
 void QG_CommandWidget::appendHistory(const QString& msg) {
-    teHistory->append(msg);
+    if (!edwin::esDuctusArq()) {
+        teHistory->append(msg);
+        return;
+    }
+    // Colores de consola: errores en rojo, lo demás en gris claro.
+    const QString m = msg.toLower();
+    const bool error = m.contains("unknown") || m.contains("desconocid") || m.contains("error")
+                       || m.contains("invalid") || m.contains("inválid") || m.contains("no se encontr");
+    teHistory->append(QString("<span style='color:%1; white-space:pre-wrap'>%2</span>")
+                          .arg(error ? "#f48771" : "#cccccc", msg.toHtmlEscaped()));
 }
 
 void QG_CommandWidget::handleCommand(QString cmd)
@@ -214,7 +235,11 @@ void QG_CommandWidget::handleCommand(QString cmd)
     cmd = cmd.simplified();
     bool isAction=false;
     if (!cmd.isEmpty()) {
-        appendHistory(cmd);
+        if (edwin::esDuctusArq())  // el comando escrito, en amarillo como en una consola
+            teHistory->append(QString("<span style='color:#6ad46a'>PS DuctusArq&gt;</span> "
+                                      "<span style='color:#dcdcaa'>%1</span>").arg(cmd.toHtmlEscaped()));
+        else
+            appendHistory(cmd);
     }
 
     if (actionHandler) {

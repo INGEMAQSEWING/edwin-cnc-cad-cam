@@ -18,9 +18,9 @@ include(../../common.pri)
 # For plugins
 INCLUDEPATH    += ../../librecad/src/plugins
 
-SOURCES += ductusarq.cpp herramientas.cpp espacios.cpp mobiliario.cpp render.cpp rotulo.cpp ventas.cpp
+SOURCES += ductusarq.cpp herramientas.cpp espacios.cpp mobiliario.cpp render.cpp rotulo.cpp ventas.cpp superponer.cpp
 
-HEADERS += ductusarq.h arq.h comun.h muebles.h ventas.h circulacion.h
+HEADERS += ductusarq.h arq.h comun.h muebles.h ventas.h circulacion.h cruces.h
 
 # Installation Directory
 win32 {

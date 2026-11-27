@@ -1404,6 +1404,8 @@ bool QG_ActionHandler::command(const QString& cmd)
                     {"Render de la planta", "ren render"},
                     {"Plano de ventas", "pv ventas planoventas"},
                     {"Revisar circulación", "cir circulacion circulación pasillos"},
+                    {"Superponer plano", "sup superponer superpuesto"},
+                    {"Revisar cruces", "cru cruces cruce interferencias"},
                     {"Pórtico", "por portico pórtico"},
                     {"Cimentación", "cim cimentacion cimentación zapata zapatas"},
                     {"Rótulo", "rot rotulo rótulo cajetin cajetín"},

@@ -27,6 +27,8 @@
 #define DOCUMENT_INTERFACE_H
 
 #include <QPointF>
+#include <QPolygonF>
+#include <QStringList>
 #include <QHash>
 #include <QVariant>
 #include<vector>
@@ -537,6 +539,26 @@ public:
     *   shape) in the current layer, e.g. a column in plan.
     */
     virtual void addSolid(std::vector<QPointF> const& corners) = 0;
+
+    /*! DuctusArq: overlay a drawing (DXF or DWG) as a block. Its layers come in with
+    *   \p prefijo in front of their names (they never mix with the drawing's own layers) and
+    *   with color \p color (0xRRGGBB); entities are set to "by layer" color. Inner blocks are
+    *   renamed with the prefix too. Returns the new block name, or empty if it can't be read.
+    */
+    virtual QString addBlockSuperpuesto(QString fullName, QString prefijo, int color) = 0;
+
+    /*! DuctusArq: show/hide and lock/unlock a layer. Returns false if it doesn't exist. */
+    virtual bool setLayerState(QString name, bool visible, bool locked) = 0;
+
+    /*! DuctusArq: state of a layer. Returns false if it doesn't exist. */
+    virtual bool getLayerState(QString name, bool *visible, bool *locked) = 0;
+
+    /*! DuctusArq: geometry, in drawing coordinates, of every insert of \p block (nested
+    *   blocks included): lines and polylines as point lists (closed ones repeat the first
+    *   point at the end) with their layer, and circles as center and radius.
+    */
+    virtual bool getInsertGeometry(QString block, QList<QPolygonF> *polys, QStringList *capas,
+                                   QList<QPointF> *centros, QList<double> *radios) = 0;
 };
 
 
